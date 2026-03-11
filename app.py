@@ -105,11 +105,11 @@ def add_rect(slide, x, y, w, h, fill, line=None, line_w=0.5, radius=False):
         shp.line.fill.background()
     return shp
 
-def add_label(slide, x, y, w, h, text, fill, text_color=C_WHITE,
+def add_label(slide, x, y, w, h, fill, text="", text_color=C_WHITE,
               font_size=10, bold=False, align=PP_ALIGN.LEFT,
-              radius=False, pad=Inches(0.08)):
-    """Filled box with single-line text."""
-    shp = add_rect(slide, x, y, w, h, fill, radius=radius)
+              radius=False, pad=Inches(0.08), line=None, line_w=0.5):
+    """Filled box with single-line text. fill is always the 6th positional arg."""
+    shp = add_rect(slide, x, y, w, h, fill, line=line, line_w=line_w, radius=radius)
     _set_tf(shp.text_frame, text, font_size, bold=bold,
             color=text_color, align=align, pad=pad)
     return shp
