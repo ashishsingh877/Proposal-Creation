@@ -88,28 +88,43 @@ def groq_call(client: Groq, prompt: str, max_tokens: int = 1000) -> str:
 # AI PROMPTS
 # ─────────────────────────────────────────────────────────────
 
+# ── Pre-step: Extract business model from website ────────────
+# Run FIRST so the same answer flows into both slide 4 and slide 11
+P_BIZ_MODEL = """
+Analyse the company website content below and answer in ONE concise sentence (max 20 words):
+What is this company's primary business model and channels?
+
+Focus on: B2B / B2B2C / B2C percentages, who they sell to, and how they reach customers.
+Example output: "Predominantly B2B and B2B2C, serving pharmaceutical manufacturers and distributors through direct sales and a dealer network, with limited B2C via website."
+
+Company: {company_name}
+Website content: {website_text}
+
+Return ONLY the single sentence. No labels.
+"""
+
 # ── Slide 4: Full company description paragraph ──────────────
-# Must match the original style: 3 rich sentences covering:
-# 1) What the company is + product/service segments
-# 2) Business model (B2B/B2C/B2B2C) + channels + customer relationships
-# 3) Core capabilities + technology + operations + value proposition
+# Exactly matches the Eveready original: 3 sentences, 124 words, fills the full-width box
 P_DESC = """
-You are writing a professional consulting proposal for a data-privacy engagement.
+You are writing a professional consulting proposal. Rewrite the paragraph below for a NEW company.
 
-Write a single paragraph (3 sentences, 120–140 words total) describing the TARGET COMPANY.
-Use the ORIGINAL paragraph below as your structural template — copy the sentence structure exactly,
-but replace ALL Eveready/EIIL-specific facts with accurate facts for the new company.
-
-Sentence 1: "[Company] is a [type] [industry] company, operating through [model] spanning [segments/products] across [markets]."
-Sentence 2: "The company follows a [B2B/B2C/B2B2C]-driven model, serving [customers/channels] through [distribution model], while maintaining [interface type] through [customer touch points]."
-Sentence 3: "[Short name] enables [capabilities] through [technology/systems/processes], ensuring [value proposition]."
+CRITICAL RULES:
+1. EXACTLY 3 sentences — no more, no less
+2. EXACTLY 120–128 words total — count carefully
+3. Keep the EXACT grammatical skeleton of each sentence; only swap company-specific nouns/phrases
+4. Use the business model info provided — do NOT guess or contradict it
+5. All 3 required content elements MUST appear (one per sentence):
+   - Sentence 1: Company type + full list of product/service segments + markets served
+   - Sentence 2: EXACT business model ({business_model}) + who they serve + specific channels/networks + B2C touchpoints
+   - Sentence 3: Core operational capabilities + specific technology/systems used + value proposition closing statement
 
 TARGET COMPANY:
 Name: {company_name}
 Short name: {company_short}
+Business model: {business_model}
 Website content: {website_text}
 
-ORIGINAL PARAGRAPH (structure to follow, do NOT copy content):
+ORIGINAL PARAGRAPH to rewrite (124 words — match this length):
 Eveready Industries India Ltd. (EIIL) is a leading Indian manufacturer of portable energy and \
 lighting solutions, operating through a diversified multi-segment model spanning dry-cell batteries, \
 flashlights, consumer lighting, professional lighting and electrical accessories across domestic and \
@@ -123,7 +138,7 @@ facilities and data-enabled supply-chain operations, ensuring safe, reliable, co
 cost-efficient delivery of portable power and lighting solutions across diverse consumer and \
 commercial segments.
 
-Return ONLY the rewritten paragraph. Exactly 3 sentences. 120–140 words. No labels or quotes.
+Return ONLY the rewritten paragraph. NO labels, NO quotes, NO extra lines. 120–128 words exactly.
 """
 
 # ── Slide 4: Scope paragraph ────────────────────────────────
@@ -171,26 +186,26 @@ Return exactly 7 lines. No numbering, no bullet symbols, no extra text.
 P_S11 = """
 You are rewriting one paragraph for a professional consulting proposal slide.
 
-The slide text box has a FIXED size. The paragraph you write MUST be EXACTLY 85 words — \
-not 84, not 86. Count carefully before returning.
+The slide text box has a FIXED size. The paragraph MUST be EXACTLY 82 words — count carefully.
 
 Rules:
-- Replace "Eveready Industries India Ltd." with {company_name}
-- Replace "EIIL" with {company_short}
-- Replace ALL industry-specific references (manufacturing, supply-chain, distribution, batteries, \
-  flashlights, lighting, warranty support, brand engagement, nationwide operational footprint) with \
-  accurate equivalents for the new company — its actual business operations, channels, and \
-  customer interaction types
-- Keep the EXACT sentence structure: Sentence 1 = scope application + operations + channels + \
-  B2C data processing touchpoints. Sentence 2 = "This approach ensures..." closing statement.
-- Professional consulting prose. Specific to the company. Not generic.
+- Replace "Eveready Industries India Ltd." with {company_name} and "EIIL" with {company_short}
+- Replace ALL industry-specific operations with the new company's actual operations and functions
+- CRITICAL: Use the EXACT business model provided below for the channel description in Sentence 1
+  Business model: {business_model}
+- Keep the EXACT 2-sentence structure:
+  Sentence 1: "For this engagement... [company name], supporting its [operations], which primarily \
+operate through [exact channels from business model above], with [B2C data processing touchpoints]."
+  Sentence 2: "This approach ensures a focused effort on strengthening [short]'s internal privacy \
+governance and compliance capabilities, aligned with applicable regulatory requirements, its \
+operating model and its [describe] operational footprint."
 
 TARGET COMPANY:
 Name: {company_name}
 Short name: {company_short}
 Business context: {website_text}
 
-ORIGINAL (85 words — match this structure and length EXACTLY):
+ORIGINAL (82 words — match this structure and length EXACTLY):
 For this engagement, the privacy compliance model will be applied exclusively to the internal \
 functions, processes and governance structures of Eveready Industries India Ltd., supporting its \
 manufacturing, supply‑chain, commercial, distribution and corporate operations, which primarily \
@@ -486,13 +501,37 @@ if generate_btn:
 
     with st.status("🤖 Generating AI content for slides…", expanded=True) as sts:
 
+        # ── Pre-step: extract business model ONCE, share across slides 4 & 11 ──
+        st.write("🔍 Extracting business model…")
+        try:
+            biz_model = groq_call(client,
+                                  P_BIZ_MODEL.format(company_name=company_name,
+                                                     website_text=web[:2000]),
+                                  max_tokens=80)
+        except Exception:
+            biz_model = f"Predominantly B2B, serving enterprise clients through direct and dealer channels"
+        ai["biz_model"] = biz_model
+
         st.write("📝 Slide 4 — Company description paragraph…")
         safe("s4_desc",
              P_DESC.format(company_name=company_name,
                            company_short=company_short,
-                           website_text=web[:2000]),
-             max_tok=350,
-             fallback=f"{company_name} is a leading company in its industry, operating across multiple business segments in domestic and international markets. The company follows a B2B-driven model serving enterprise clients and partners through established channels. {company_short} delivers high-quality products and services through integrated operations ensuring safe, compliant and cost-efficient delivery.")
+                           business_model=biz_model,
+                           website_text=web[:2500]),
+             max_tok=500,
+             fallback=(
+                 f"{company_name} is a leading company in its industry, operating through a "
+                 f"diversified multi-segment model spanning its core products and services across "
+                 f"domestic and select international markets. {biz_model.rstrip('.')}. "
+                 f"{company_short} enables end-to-end service delivery through technology-driven "
+                 f"quality systems and integrated operations, ensuring safe, reliable, compliant "
+                 f"and cost-efficient delivery across diverse market segments."
+             ))
+        # Hard trim to 128 words — TextBox 8 is 13.03" wide, original is 124 words
+        if ai.get("s4_desc"):
+            words = ai["s4_desc"].split()
+            if len(words) > 128:
+                ai["s4_desc"] = " ".join(words[:128])
 
         st.write("📝 Slide 4 — Scope paragraph…")
         safe("s4_scope",
@@ -521,17 +560,18 @@ if generate_btn:
         safe("s11",
              P_S11.format(company_name=company_name,
                           company_short=company_short,
+                          business_model=biz_model,
                           website_text=web[:2000]),
              max_tok=250,
              fallback=(
                  f"For this engagement, the privacy compliance model will be applied exclusively "
                  f"to the internal functions, processes and governance structures of {company_name}, "
-                 f"supporting its core business operations, quality assurance, commercial and corporate "
-                 f"functions, which primarily operate through B2B and B2B2C channels, with limited B2C "
-                 f"personal data processing through customer service interactions, digital platform usage "
-                 f"and product support programs. This approach ensures a focused effort on strengthening "
-                 f"{company_short}'s internal privacy governance and compliance capabilities, aligned "
-                 f"with applicable regulatory requirements, its operating model and its operational footprint."
+                 f"supporting its core business, quality assurance, commercial and corporate operations, "
+                 f"which {biz_model.rstrip('.')}, with limited B2C personal data processing through "
+                 f"customer service interactions and digital platform usage. This approach ensures a "
+                 f"focused effort on strengthening {company_short}'s internal privacy governance and "
+                 f"compliance capabilities, aligned with applicable regulatory requirements, its "
+                 f"operating model and its operational footprint."
              ))
         # Trim s11 to max 82 words to prevent overflow (box fits ~85; 3-word render buffer)
         if ai.get("s11"):
@@ -581,6 +621,8 @@ if generate_btn:
 
     # ── Preview ──────────────────────────────────────────────
     with st.expander("🔍 Preview AI-generated content"):
+        st.markdown("**Extracted Business Model (used in Slides 4 & 11):**")
+        st.success(ai.get("biz_model", ""))
         st.markdown("**Slide 4 – Company Description:**")
         st.info(ai.get("s4_desc", ""))
         st.markdown("**Slide 4 – Scope Paragraph:**")
