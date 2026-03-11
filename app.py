@@ -30,16 +30,32 @@ from groq import Groq
 st.set_page_config(page_title="AI Proposal Generator", page_icon="📊", layout="wide")
 st.title("📊 AI Proposal Generator")
 st.markdown(
-    "Upload the **template PPTX**, enter the target company details and your Groq key — "
+    "Upload the **template PPTX**, enter the target company details — "
     "the app personalises every relevant slide while keeping design, fonts and layout intact."
 )
+
+# ─────────────────────────────────────────────────────────────
+# GROQ API KEY — read from Streamlit secrets first, fall back to manual input
+# In Streamlit Cloud: set GROQ_API_KEY in App Settings → Secrets
+# Locally: add to .streamlit/secrets.toml as: GROQ_API_KEY = "gsk_..."
+# ─────────────────────────────────────────────────────────────
+_secret_key = st.secrets.get("GROQ_API_KEY", "") if hasattr(st, "secrets") else ""
 
 # ─────────────────────────────────────────────────────────────
 # SIDEBAR
 # ─────────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("⚙️ Configuration")
-    groq_api_key    = st.text_input("Groq API Key", type="password", placeholder="gsk_...")
+    if _secret_key:
+        groq_api_key = _secret_key
+        st.success("🔑 Groq API key loaded from Secrets", icon="✅")
+    else:
+        groq_api_key = st.text_input(
+            "Groq API Key",
+            type="password",
+            placeholder="gsk_...",
+            help="Or set GROQ_API_KEY in Streamlit Secrets to avoid entering it every time.",
+        )
     st.markdown("---")
     st.header("🏢 Company Details")
     company_name    = st.text_input("Full Company Name",         placeholder="SGD Pharma India Pvt. Ltd.")
@@ -344,15 +360,15 @@ def set_para_text(slide, shape_name: str, fragment: str, new_text: str) -> bool:
 # ─────────────────────────────────────────────────────────────
 def fix_slide4_bullets(slide):
     """
-    TextBox 12 (right column) uses Wingdings § bullets (square appearance).
-    TextBox 3  (left column)  uses Arial •  bullets (circle appearance).
-    Fix TextBox 12 bullet paragraphs to use the same Arial • style as TextBox 3.
+    TextBox 12 (right column) uses Wingdings § — renders as solid squares.
+    TextBox 3  (left column)  uses Arial • with buSzPct=100000, buClr=#3C3D3E.
+    Patch TextBox 12 to be byte-for-byte identical in bullet styling to TextBox 3.
+
+    Correct OOXML child order inside <a:pPr>:
+      ... → buClr → buSzPct → buFont → buChar → ...
     """
-    CIRCLE_BULLET_XML = (
-        '<a:buFont xmlns:a="{ns}" typeface="Arial" '
-        'panose="020B0604020202020204" pitchFamily="34" charset="0"/>'
-        '<a:buChar xmlns:a="{ns}" char="&#8226;"/>'
-    ).format(ns=ANS)
+    BULLET_TAGS = ("buNone", "buClrTx", "buClr", "buSzTx", "buSzPct",
+                   "buSzClamp", "buFont", "buFontTx", "buChar", "buAutoNum")
 
     for shape in slide.shapes:
         if shape.name != "TextBox 12":
@@ -361,28 +377,42 @@ def fix_slide4_bullets(slide):
             pPr = para._p.find(f"{{{ANS}}}pPr")
             if pPr is None:
                 continue
-            # Only fix paragraphs that have a bullet char defined (i.e. actual bullet lines)
-            bu_char = pPr.find(f"{{{ANS}}}buChar")
-            if bu_char is None:
+            # Only touch lines that already carry a bullet character
+            if pPr.find(f"{{{ANS}}}buChar") is None:
                 continue
 
-            # Remove old buFont and buChar
-            for tag in ("buFont", "buChar"):
+            # ── Remove ALL existing bullet-related elements ───────
+            for tag in BULLET_TAGS:
                 el = pPr.find(f"{{{ANS}}}{tag}")
                 if el is not None:
                     pPr.remove(el)
 
-            # Insert new Arial circle bullet
-            # Parse and append
-            new_font = etree.fromstring(
+            # ── Build the 4 elements that match the left column ──
+            # 1. buClr  — colour #3C3D3E (same as TextBox 3)
+            bu_clr = etree.fromstring(
+                f'<a:buClr xmlns:a="{ANS}">'
+                f'  <a:srgbClr val="3C3D3E"/>'
+                f'</a:buClr>'
+            )
+            # 2. buSzPct — 100 % (val=100000)
+            bu_sz = etree.fromstring(
+                f'<a:buSzPct xmlns:a="{ANS}" val="100000"/>'
+            )
+            # 3. buFont  — Arial (same face as TextBox 3)
+            bu_font = etree.fromstring(
                 f'<a:buFont xmlns:a="{ANS}" typeface="Arial" '
                 f'panose="020B0604020202020204" pitchFamily="34" charset="0"/>'
             )
-            new_char = etree.fromstring(
+            # 4. buChar  — solid circle •
+            bu_char = etree.fromstring(
                 f'<a:buChar xmlns:a="{ANS}" char="\u2022"/>'
             )
-            pPr.append(new_font)
-            pPr.append(new_char)
+
+            # ── Append in correct OOXML order ──────────────────
+            pPr.append(bu_clr)
+            pPr.append(bu_sz)
+            pPr.append(bu_font)
+            pPr.append(bu_char)
 
 
 # ─────────────────────────────────────────────────────────────
