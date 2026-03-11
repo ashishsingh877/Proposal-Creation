@@ -169,46 +169,104 @@ Return exactly 7 lines. No numbering, no bullet symbols, no extra text.
 
 # ── Slide 11: Operating model paragraph ─────────────────────
 P_S11 = """
-Rewrite the paragraph below for the target company.
-Replace "Eveready Industries India Ltd." and the industry-specific operations with the new company.
-Keep all privacy methodology language. Max 55 words.
+You are rewriting one paragraph for a professional consulting proposal slide.
+
+The slide text box has a FIXED size. The paragraph you write MUST be EXACTLY 85 words — \
+not 84, not 86. Count carefully before returning.
+
+Rules:
+- Replace "Eveready Industries India Ltd." with {company_name}
+- Replace "EIIL" with {company_short}
+- Replace ALL industry-specific references (manufacturing, supply-chain, distribution, batteries, \
+  flashlights, lighting, warranty support, brand engagement, nationwide operational footprint) with \
+  accurate equivalents for the new company — its actual business operations, channels, and \
+  customer interaction types
+- Keep the EXACT sentence structure: Sentence 1 = scope application + operations + channels + \
+  B2C data processing touchpoints. Sentence 2 = "This approach ensures..." closing statement.
+- Professional consulting prose. Specific to the company. Not generic.
 
 TARGET COMPANY:
-Name: {company_name}, Short: {company_short}
+Name: {company_name}
+Short name: {company_short}
 Business context: {website_text}
 
-ORIGINAL:
+ORIGINAL (85 words — match this structure and length EXACTLY):
 For this engagement, the privacy compliance model will be applied exclusively to the internal \
 functions, processes and governance structures of Eveready Industries India Ltd., supporting its \
-manufacturing, supply-chain, commercial, distribution and corporate operations, which primarily \
+manufacturing, supply‑chain, commercial, distribution and corporate operations, which primarily \
 operate through B2B and B2B2C channels, with limited B2C personal data processing through \
-customer service interactions, digital platform usage and product service requests.
+customer service interactions, warranty support and brand engagement programs. This approach \
+ensures a focused effort on strengthening EIIL's internal privacy governance and compliance \
+capabilities, aligned with applicable regulatory requirements, its operating model and its \
+nationwide operational footprint.
 
-Return ONLY the rewritten paragraph.
+Return ONLY the rewritten paragraph. EXACTLY 82 words. No labels, no quotes.
 """
 
 # ── Slide 17: Data Lifecycle ────────────────────────────────
 P_S17 = """
-Rewrite all 6 Data Lifecycle paragraphs for the target company.
-Replace EVERY Eveready/EIIL-specific product, process and system reference with equivalent
-references for the new company. Keep privacy/data-governance framing identical. Max 55 words each.
+You are rewriting 6 Data Lifecycle paragraphs for a professional consulting proposal.
+Each paragraph fits inside a FIXED-SIZE text box. You MUST hit the EXACT word count shown.
+Count every word carefully. Off by even 2–3 words will cause overflow or empty space.
+
+Rules for every section:
+- Replace ALL Eveready/EIIL-specific products, systems, functions, channels and partner types \
+  with accurate equivalents for the new company
+- Keep the EXACT sentence structure of each original
+- Name actual systems, product lines, departments and data types relevant to the new company
+- Same formal consulting tone — specific and detailed, never vague or generic
 
 TARGET COMPANY:
-Name: {company_name}, Short: {company_short}
+Name: {company_name}
+Short name: {company_short}
 Business context: {website_text}
 
-Return a JSON object with keys:
-"collection","use_processing","storage","sharing","retention","disposal"
-Each value = paragraph text only (no section title prefix).
+Return a JSON object with exactly these 6 keys:
+"collection", "use_processing", "storage", "sharing", "retention", "disposal"
+Value = body paragraph text ONLY (no bold title, no section number prefix).
 Return ONLY valid JSON. No markdown fences.
 
-ORIGINALS:
-collection: We will review how Eveready Industries India Ltd. (EIIL) collects personal, operational and regulatory data across functions such as employee onboarding; manufacturing processes for batteries, flashlights and lighting products; distributor onboarding; sales operations; supply-chain coordination; and customer service requirements. This includes data captured through ERP systems, plant-level manufacturing platforms, distributor management portals, helpdesk and CRM interfaces.
-use_processing: We will assess how collected data is used for manufacturing planning, quality control, inventory management, supply chain coordination, compliance reporting and performance monitoring across EIIL's key segments: batteries, flashlights, consumer lighting, professional lighting and electrical accessories. This includes data integration across systems such as ERP, CRM, distributor management systems and quality monitoring platforms.
-storage: We will examine secure storage of manufacturing, safety, employee and vendor data across cloud platforms, on-premise servers at EIIL's manufacturing units, validated production systems, backup systems and R&D repositories. Controls for authentication, role-based access, audit trails and compliance with applicable industry and corporate guidelines will also be reviewed.
-sharing: We will evaluate data-sharing practices with distributors, logistics partners, manufacturing vendors, regulatory authorities, retailers and internal teams. This includes reviewing contractual safeguards, supply-chain data-processing requirements, cross-border data transfer practices (where applicable), anonymization procedures and security measures.
-retention: We will review retention policies for manufacturing logs, quality-control reports, product testing data, R&D records, HR and payroll files, vendor documentation, distributor agreements, operational logs and financial documentation. Retention requirements will be assessed against regulatory mandates, audit requirements and internal EIIL governance policies.
-disposal: We will verify secure deletion, destruction and anonymization of records across digital platforms, manufacturing systems, archival repositories, distributor management systems and physical documentation. Disposal workflows will be reviewed for alignment with regulatory expectations and internal EIIL data-governance guidelines.
+ORIGINALS with EXACT word counts you must match:
+
+collection [EXACTLY 61 words]:
+We will review how Eveready Industries India Ltd. (EIIL) collects personal, operational and \
+regulatory data across functions such as employee onboarding; manufacturing processes for batteries, \
+flashlights and lighting products; distributor onboarding; sales operations; supply‑chain \
+coordination; and customer service requirements. This includes data captured through ERP systems, \
+plant‑level manufacturing systems, distribution platforms, logistics systems and digital interfaces \
+used across EIIL's nationwide network.
+
+use_processing [EXACTLY 64 words]:
+We will assess how collected data is used for manufacturing planning, quality control, inventory \
+management, supply chain coordination, compliance reporting and performance monitoring across EIIL's \
+key segments: batteries, flashlights, consumer lighting, professional lighting and electrical \
+accessories. This includes data integration across systems such as ERP, CRM, distributor management \
+systems and plant‑level automation platforms, along with tools supporting R&D operations, workforce \
+management and operational efficiency.
+
+storage [EXACTLY 48 words]:
+We will examine secure storage of manufacturing, safety, employee and vendor data across cloud \
+platforms, on‑premise servers at EIIL's manufacturing units, validated production systems, backup \
+systems and R&D repositories. Controls for authentication, role‑based access, audit trails and \
+compliance with applicable industry and corporate guidelines will also be reviewed.
+
+sharing [EXACTLY 36 words]:
+We will evaluate data‑sharing practices with distributors, logistics partners, manufacturing vendors, \
+regulatory authorities, retailers and internal teams. This includes reviewing contractual safeguards, \
+supply‑chain data‑processing requirements, cross‑border data transfer practices (where applicable), \
+anonymization procedures and security measures.
+
+retention [EXACTLY 43 words]:
+We will review retention policies for manufacturing logs, quality‑control reports, product testing \
+data, R&D records, HR and payroll files, vendor documentation, distributor agreements, operational \
+logs and financial documentation. Retention requirements will be assessed against regulatory mandates, \
+audit requirements and internal EIIL governance policies.
+
+disposal [EXACTLY 47 words]:
+We will verify secure deletion, destruction and anonymization of records across digital platforms, \
+manufacturing systems, archival repositories, distributor management systems and physical \
+documentation. Disposal workflows will be reviewed for alignment with regulatory expectations and \
+internal EIIL data‑governance guidelines to ensure safe and compliant handling of obsolete data.
 """
 
 # ─────────────────────────────────────────────────────────────
@@ -463,20 +521,45 @@ if generate_btn:
         safe("s11",
              P_S11.format(company_name=company_name,
                           company_short=company_short,
-                          website_text=web[:1500]),
-             max_tok=200,
-             fallback=f"For this engagement, the privacy compliance model will be applied exclusively to the internal functions, processes and governance structures of {company_name}, supporting its core business operations and corporate functions, which operate through B2B and B2B2C channels.")
+                          website_text=web[:2000]),
+             max_tok=250,
+             fallback=(
+                 f"For this engagement, the privacy compliance model will be applied exclusively "
+                 f"to the internal functions, processes and governance structures of {company_name}, "
+                 f"supporting its core business operations, quality assurance, commercial and corporate "
+                 f"functions, which primarily operate through B2B and B2B2C channels, with limited B2C "
+                 f"personal data processing through customer service interactions, digital platform usage "
+                 f"and product support programs. This approach ensures a focused effort on strengthening "
+                 f"{company_short}'s internal privacy governance and compliance capabilities, aligned "
+                 f"with applicable regulatory requirements, its operating model and its operational footprint."
+             ))
+        # Trim s11 to max 82 words to prevent overflow (box fits ~85; 3-word render buffer)
+        if ai.get("s11"):
+            words = ai["s11"].split()
+            if len(words) > 82:
+                ai["s11"] = " ".join(words[:82])
 
         st.write("📝 Slide 17 — Data Lifecycle (6 sections)…")
+        # Per-section word limits matching exact box sizes
+        S17_LIMITS = {
+            "collection": 61, "use_processing": 64, "storage": 48,
+            "sharing": 36, "retention": 43, "disposal": 47,
+        }
         try:
             raw17 = groq_call(client,
                               P_S17.format(company_name=company_name,
                                            company_short=company_short,
-                                           website_text=web[:1500]),
-                              max_tokens=2200)
+                                           website_text=web[:2000]),
+                              max_tokens=3000)
             raw17 = re.sub(r"^```(?:json)?", "", raw17).strip()
             raw17 = re.sub(r"```$", "", raw17).strip()
             ai["s17_lifecycle"] = json.loads(raw17)
+            # Trim each section to its exact box word limit
+            for k, limit in S17_LIMITS.items():
+                if k in ai["s17_lifecycle"]:
+                    words = ai["s17_lifecycle"][k].split()
+                    if len(words) > limit:
+                        ai["s17_lifecycle"][k] = " ".join(words[:limit])
         except Exception as e:
             ai["s17_lifecycle"] = {}
             st.warning(f"s17_lifecycle: {e}")
