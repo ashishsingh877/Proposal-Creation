@@ -1,41 +1,33 @@
 """
 AI-Powered Proposal Generator
-Personalises a DPDPA consulting proposal template for any target company.
+Personalises a DPDPA consulting proposal template (.pptx) for any new company.
 
-Slides modified:
-  Slide 1  – Company name + date
-  Slide 4  – Company description paragraph + scope understanding (AI-written)
-  Slide 5  – Employee count, hosting, applications, departments, data subjects (from docx)
-  Slide 11 – Privacy Operating Model paragraph (AI-written)
-  Slide 12 – Phase bullets: EIIL references replaced
-  Slide 14 – Phase I: EIIL references replaced
-  Slide 17 – Data Lifecycle 6 paragraphs (AI-written per section)
-  Slide 19 – Phase II: EIIL references replaced
+Slide 4  – AI rewrites company description + scope (word-limited to prevent overflow)
+Slide 5  – Fully rebuilt with professional layout using questionnaire data
+Slide 11 – AI rewrites operating model paragraph
+Slide 12, 14, 19 – Company name auto-replaced
+Slide 17 – AI rewrites all 6 Data Lifecycle sections
 """
 
-import io, json, re, copy
+import io, json, re
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 from pptx import Presentation
-from pptx.util import Pt
+from pptx.util import Inches, Pt, Emu
+from pptx.dml.color import RGBColor
+from pptx.enum.text import PP_ALIGN
 from docx import Document as DocxDocument
 from groq import Groq
 
 # ─────────────────────────────────────────────────────────────
 # PAGE CONFIG
 # ─────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="AI Proposal Generator – Protiviti",
-    page_icon="📊",
-    layout="wide",
-)
-
+st.set_page_config(page_title="AI Proposal Generator", page_icon="📊", layout="wide")
 st.title("📊 AI Proposal Generator")
 st.markdown(
-    "Upload the **template PPTX**, the **filled Pre-Scoping Questionnaire (.docx)**, "
-    "enter basic company details and your **Groq API key** — the app will personalise "
-    "every relevant slide while keeping design, fonts and layout 100% intact."
+    "Upload the **template PPTX** + **Pre-Scoping Questionnaire (.docx)**, enter company "
+    "details and your Groq key — the app personalises every slide while keeping design intact."
 )
 
 # ─────────────────────────────────────────────────────────────
@@ -43,56 +35,391 @@ st.markdown(
 # ─────────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("⚙️ Configuration")
-    groq_api_key = st.text_input("Groq API Key", type="password", placeholder="gsk_...")
+    groq_api_key    = st.text_input("Groq API Key", type="password", placeholder="gsk_...")
     st.markdown("---")
     st.header("🏢 Company Details")
-    company_name   = st.text_input("Full Company Name", placeholder="SGD Pharma India Pvt. Ltd.")
-    company_short  = st.text_input("Abbreviation / Short Name", placeholder="SGD")
-    company_website = st.text_input("Website URL", placeholder="https://www.sgd-pharma.com")
+    company_name    = st.text_input("Full Company Name",           placeholder="SGD Pharma India Pvt. Ltd.")
+    company_short   = st.text_input("Abbreviation / Short Name",   placeholder="SGD")
+    company_website = st.text_input("Website URL",                 placeholder="https://www.sgd-pharma.com")
     st.markdown("---")
     st.header("📁 Files")
-    uploaded_ppt  = st.file_uploader("Template PPTX", type=["pptx"])
-    uploaded_docx = st.file_uploader("Pre-Scoping Questionnaire (.docx)", type=["docx"])
+    uploaded_ppt    = st.file_uploader("Template PPTX",                    type=["pptx"])
+    uploaded_docx   = st.file_uploader("Pre-Scoping Questionnaire (.docx)", type=["docx"])
     st.markdown("---")
     generate_btn = st.button("🚀 Generate Proposal", use_container_width=True, type="primary")
 
 # ─────────────────────────────────────────────────────────────
+# CONSTANTS – design tokens matching template palette
+# ─────────────────────────────────────────────────────────────
+FONT        = "Aptos"
+C_NAVY      = RGBColor(0x1F, 0x38, 0x64)   # dark navy
+C_NAVY2     = RGBColor(0x2E, 0x5E, 0x9A)   # mid-blue
+C_TEAL      = RGBColor(0x1A, 0x65, 0x70)   # teal
+C_ORANGE    = RGBColor(0xE8, 0x83, 0x3A)   # template accent
+C_WHITE     = RGBColor(0xFF, 0xFF, 0xFF)
+C_LIGHT_BG  = RGBColor(0xEB, 0xF2, 0xF7)   # left panel bg
+C_DIVIDER   = RGBColor(0xCC, 0xD9, 0xE8)
+C_BODY_DARK = RGBColor(0x22, 0x22, 0x33)
+C_BODY_LITE = RGBColor(0xCB, 0xDC, 0xF0)   # light text on dark bg
+TAG_COLORS  = [
+    RGBColor(0x2E, 0x5E, 0x9A),
+    RGBColor(0x1A, 0x65, 0x70),
+    RGBColor(0x3A, 0x7D, 0xB4),
+    RGBColor(0x17, 0x55, 0x65),
+    RGBColor(0x45, 0x82, 0xBB),
+]
+
+# ─────────────────────────────────────────────────────────────
+# PPTX DRAW UTILITIES
+# ─────────────────────────────────────────────────────────────
+def _set_tf(tf, text, font_size, bold=False, italic=False,
+            color=None, align=PP_ALIGN.LEFT, word_wrap=True,
+            pad=Inches(0.07)):
+    tf.word_wrap = word_wrap
+    tf.margin_left   = pad
+    tf.margin_right  = pad
+    tf.margin_top    = Inches(0.04)
+    tf.margin_bottom = Inches(0.04)
+    para = tf.paragraphs[0]
+    para.alignment = align
+    run = para.add_run()
+    run.text = text
+    run.font.name = FONT
+    run.font.size = Pt(font_size)
+    run.font.bold   = bold
+    run.font.italic = italic
+    if color:
+        run.font.color.rgb = color
+    return tf
+
+def add_rect(slide, x, y, w, h, fill, line=None, line_w=0.5, radius=False):
+    """Add a filled rectangle (or rounded rect)."""
+    shape_type = 5 if radius else 1   # 5=rounded, 1=rectangle
+    shp = slide.shapes.add_shape(shape_type, x, y, w, h)
+    shp.fill.solid()
+    shp.fill.fore_color.rgb = fill
+    if line:
+        shp.line.color.rgb = line
+        shp.line.width = Pt(line_w)
+    else:
+        shp.line.fill.background()
+    return shp
+
+def add_label(slide, x, y, w, h, text, fill, text_color=C_WHITE,
+              font_size=10, bold=False, align=PP_ALIGN.LEFT,
+              radius=False, pad=Inches(0.08)):
+    """Filled box with single-line text."""
+    shp = add_rect(slide, x, y, w, h, fill, radius=radius)
+    _set_tf(shp.text_frame, text, font_size, bold=bold,
+            color=text_color, align=align, pad=pad)
+    return shp
+
+def add_textbox(slide, x, y, w, h, text, font_size=9, bold=False,
+                italic=False, color=C_BODY_DARK, align=PP_ALIGN.LEFT):
+    txb = slide.shapes.add_textbox(x, y, w, h)
+    _set_tf(txb.text_frame, text, font_size, bold=bold, italic=italic,
+            color=color, align=align)
+    return txb
+
+def add_multiline_box(slide, x, y, w, h, lines, font_size=8.5,
+                      color=C_WHITE, bullet_char="▪  "):
+    """Text box with multiple bulleted lines."""
+    txb = slide.shapes.add_textbox(x, y, w, h)
+    tf = txb.text_frame
+    tf.word_wrap = True
+    tf.margin_left   = Inches(0.05)
+    tf.margin_right  = Inches(0.05)
+    tf.margin_top    = Inches(0.03)
+    tf.margin_bottom = Inches(0.03)
+    for i, line in enumerate(lines):
+        para = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        para.alignment = PP_ALIGN.LEFT
+        run = para.add_run()
+        run.text = f"{bullet_char}{line}"
+        run.font.name = FONT
+        run.font.size = Pt(font_size)
+        run.font.color.rgb = color
+    return txb
+
+def hr(slide, x, y, w, color=C_DIVIDER):
+    """Thin horizontal rule."""
+    shp = slide.shapes.add_shape(1, x, y, w, Pt(1))
+    shp.fill.solid()
+    shp.fill.fore_color.rgb = color
+    shp.line.fill.background()
+    return shp
+
+# ─────────────────────────────────────────────────────────────
+# SLIDE 5 FULL REBUILD
+# ─────────────────────────────────────────────────────────────
+def rebuild_slide5(slide, company_name: str, company_short: str, info: dict):
+    """Remove all existing shapes and draw a fresh professional Slide 5."""
+
+    # ── 1. Wipe all shapes ───────────────────────────────────
+    for shp in list(slide.shapes):
+        shp._element.getparent().remove(shp._element)
+
+    # ── 2. Dimensions ────────────────────────────────────────
+    SW = Inches(13.33)
+    SH = Inches(7.5)
+    MARGIN = Inches(0.2)
+
+    LP_X  = MARGIN
+    LP_Y  = Inches(1.15)
+    LP_W  = Inches(4.85)
+    LP_H  = SH - LP_Y - MARGIN
+    RP_X  = LP_X + LP_W + MARGIN
+    RP_Y  = LP_Y
+    RP_W  = SW - RP_X - MARGIN
+    RP_H  = LP_H
+
+    # ── 3. Slide title ───────────────────────────────────────
+    # Teal title strip
+    add_rect(slide, Inches(0), Inches(0), SW, Inches(1.1), C_NAVY)
+    add_textbox(slide, Inches(0.3), Inches(0.18), Inches(10), Inches(0.75),
+                "Scope of Review (High-Level)",
+                font_size=28, bold=True, color=C_WHITE)
+
+    # ── 4. LEFT PANEL background ─────────────────────────────
+    add_rect(slide, LP_X, LP_Y, LP_W, LP_H, C_LIGHT_BG,
+             line=C_DIVIDER, line_w=0.5)
+
+    # ─ 4a. Org Overview section ──────────────────────────────
+    ORG_Y = LP_Y + Inches(0.12)
+    add_textbox(slide, LP_X + Inches(0.15), ORG_Y, LP_W - Inches(0.3), Inches(0.32),
+                "Organizational Overview",
+                font_size=12, bold=True, color=C_NAVY)
+
+    # Employee count — full-width banner (handles short numbers AND long descriptions)
+    emp       = info.get("employee_count", "—").strip()
+    short_emp = len(emp) <= 8          # e.g. "1,200+"
+    emp_font  = 36 if short_emp else 14
+
+    # Dark banner spanning full panel width
+    BAN_Y = ORG_Y + Inches(0.38)
+    BAN_H = Inches(0.68) if short_emp else Inches(0.56)
+    add_rect(slide, LP_X, BAN_Y, LP_W, BAN_H, C_NAVY)
+    add_textbox(slide, LP_X + Inches(0.15), BAN_Y + Inches(0.04),
+                LP_W - Inches(0.3), BAN_H - Inches(0.08),
+                emp, font_size=emp_font, bold=True,
+                color=C_WHITE, align=PP_ALIGN.CENTER)
+
+    # Sub-label: "Employee Strength"
+    SUB_Y = BAN_Y + BAN_H + Inches(0.04)
+    add_textbox(slide, LP_X + Inches(0.15), SUB_Y,
+                LP_W - Inches(0.3), Inches(0.22),
+                "Employee Strength",
+                font_size=8, color=RGBColor(0x55, 0x66, 0x77),
+                align=PP_ALIGN.CENTER)
+
+    # Italic review note
+    note_y = SUB_Y + Inches(0.27)
+    add_textbox(slide,
+                LP_X + Inches(0.15), note_y,
+                LP_W - Inches(0.3), Inches(0.65),
+                "Review coverage will be limited to the identified in-scope "
+                "functions of the parent organization.",
+                font_size=8.5, italic=True, color=RGBColor(0x44,0x55,0x66))
+
+    # ─ 4b. Personal Data Stored section ──────────────────────
+    PST_Y = note_y + Inches(0.75)
+    hr(slide, LP_X + Inches(0.1), PST_Y, LP_W - Inches(0.2))
+    PST_Y += Inches(0.06)
+
+    add_label(slide,
+              LP_X, PST_Y, LP_W, Inches(0.36),
+              C_NAVY2, bold=True, font_size=10, align=PP_ALIGN.LEFT,
+              text="  🗄  Personal Data Stored And Hosted", pad=Inches(0.08))
+
+    hosting_txt = _build_hosting_text(info)
+    add_textbox(slide,
+                LP_X + Inches(0.12), PST_Y + Inches(0.4),
+                LP_W - Inches(0.24), Inches(0.75),
+                hosting_txt, font_size=8.5, color=C_BODY_DARK)
+
+    # ─ 4c. Departments section ───────────────────────────────
+    DEPT_Y = PST_Y + Inches(1.22)
+    hr(slide, LP_X + Inches(0.1), DEPT_Y, LP_W - Inches(0.2))
+    DEPT_Y += Inches(0.06)
+
+    add_label(slide,
+              LP_X, DEPT_Y, LP_W, Inches(0.36),
+              C_TEAL, bold=True, font_size=10, align=PP_ALIGN.LEFT,
+              text="  🏢  Departments & Sub-Processes", pad=Inches(0.08))
+
+    depts = info.get("departments", [])
+    n_dept = len(depts)
+    # Join with ", " for inline display; wrap naturally inside the text box
+    dept_text = (f"Audit coverage includes assessment of data handling practices "
+                 f"within {n_dept} departments such as: {', '.join(depts)}.")
+    add_textbox(slide,
+                LP_X + Inches(0.12), DEPT_Y + Inches(0.4),
+                LP_W - Inches(0.24), Inches(1.3),
+                dept_text, font_size=8.5, color=C_BODY_DARK)
+
+    # ── 5. RIGHT PANEL background ────────────────────────────
+    add_rect(slide, RP_X, RP_Y, RP_W, RP_H, C_NAVY)
+
+    # Header bar
+    HDR_H = Inches(0.42)
+    add_label(slide,
+              RP_X, RP_Y, RP_W, HDR_H,
+              RGBColor(0x0E, 0x20, 0x40),
+              bold=True, font_size=11, align=PP_ALIGN.CENTER,
+              text="Business Operations & Digital Infrastructure")
+
+    # ─ 5a. Business line tags ─────────────────────────────────
+    blines = [b for b in info.get("core_business_lines", []) if b][:5]
+    if blines:
+        TAG_H   = Inches(0.38)
+        TAG_Y   = RP_Y + HDR_H + Inches(0.1)
+        gap     = Inches(0.06)
+        tag_w   = (RP_W - gap * (len(blines) + 1)) / len(blines)
+        for i, line in enumerate(blines):
+            tx = RP_X + gap + i * (tag_w + gap)
+            add_label(slide,
+                      tx, TAG_Y, tag_w, TAG_H,
+                      TAG_COLORS[i % len(TAG_COLORS)],
+                      bold=True, font_size=8, align=PP_ALIGN.CENTER,
+                      text=line[:28], radius=True)
+
+    # Audit note
+    NOTE_Y = RP_Y + HDR_H + Inches(0.58)
+    add_textbox(slide, RP_X + Inches(0.15), NOTE_Y, RP_W - Inches(0.3), Inches(0.34),
+                "Audit coverage includes review of collection, usage, storage, transfer, "
+                "retention and deletion practices across business landscape.",
+                font_size=7.5, color=C_BODY_LITE, align=PP_ALIGN.CENTER)
+
+    # ─ 5b. Data types + subjects grid ────────────────────────
+    GRID_Y  = NOTE_Y + Inches(0.38)
+    GRID_H  = Inches(2.55)
+    col_w   = (RP_W - Inches(0.45)) / 2
+
+    # --- Critical Data Types column ---
+    DT_X = RP_X + Inches(0.15)
+    add_label(slide,
+              DT_X, GRID_Y, col_w, Inches(0.34),
+              C_NAVY2, bold=True, font_size=9, align=PP_ALIGN.CENTER,
+              text="Critical Data Types")
+
+    dtypes = [d for d in info.get("data_types", []) if d][:6]
+    card_cols  = 2
+    card_w     = (col_w - Inches(0.08)) / card_cols
+    card_h     = Inches(0.54)
+    card_gap   = Inches(0.05)
+    card_start = GRID_Y + Inches(0.38)
+    for i, dt in enumerate(dtypes):
+        row = i // card_cols
+        col = i % card_cols
+        cx  = DT_X + col * (card_w + card_gap)
+        cy  = card_start + row * (card_h + card_gap)
+        add_label(slide,
+                  cx, cy, card_w, card_h,
+                  RGBColor(0x15, 0x28, 0x48),
+                  text=dt[:22], font_size=7.5, align=PP_ALIGN.CENTER,
+                  line=RGBColor(0x3A, 0x6A, 0xB0), line_w=0.5)
+
+    # --- Data Subjects column ---
+    DS_X = DT_X + col_w + Inches(0.15)
+    add_label(slide,
+              DS_X, GRID_Y, col_w, Inches(0.34),
+              C_TEAL, bold=True, font_size=9, align=PP_ALIGN.CENTER,
+              text="Categories of Data Subjects")
+
+    subjects = [s for s in info.get("data_subjects", []) if s][:6]
+    for i, subj in enumerate(subjects):
+        row = i // card_cols
+        col = i % card_cols
+        cx  = DS_X + col * (card_w + card_gap)
+        cy  = card_start + row * (card_h + card_gap)
+        add_label(slide,
+                  cx, cy, card_w, card_h,
+                  RGBColor(0x10, 0x28, 0x38),
+                  text=subj[:22], font_size=7.5, align=PP_ALIGN.CENTER,
+                  line=RGBColor(0x1F, 0x6B, 0x75), line_w=0.5)
+
+    # ─ 5c. Application Ecosystem ─────────────────────────────
+    APP_Y = GRID_Y + GRID_H + Inches(0.08)
+    add_label(slide,
+              RP_X + Inches(0.15), APP_Y, RP_W - Inches(0.3), Inches(0.33),
+              C_NAVY2, bold=True, font_size=9.5, align=PP_ALIGN.LEFT,
+              text="  03   Application Ecosystem", pad=Inches(0.08))
+
+    apps = [a for a in info.get("applications", []) if a][:7]
+    apps_str = ", ".join(apps) if apps else "ERP, CRM, HRMS"
+    add_textbox(slide,
+                RP_X + Inches(0.15), APP_Y + Inches(0.36),
+                RP_W - Inches(0.3), Inches(0.52),
+                f"{company_short} utilizes core enterprise applications including {apps_str}.",
+                font_size=8.5, color=C_BODY_LITE)
+
+    # ─ 5d. Customer Facing Interfaces ────────────────────────
+    CF_Y = APP_Y + Inches(0.93)
+    add_label(slide,
+              RP_X + Inches(0.15), CF_Y, RP_W - Inches(0.3), Inches(0.33),
+              C_TEAL, bold=True, font_size=9.5, align=PP_ALIGN.LEFT,
+              text="  06   Customer Facing Interfaces", pad=Inches(0.08))
+
+    ifaces = [f for f in info.get("customer_interfaces", []) if f][:5]
+    ifaces_str = ", ".join(ifaces) if ifaces else "Website, Email Support, Sales Representatives"
+    add_textbox(slide,
+                RP_X + Inches(0.15), CF_Y + Inches(0.36),
+                RP_W - Inches(0.3), Inches(0.52),
+                f"The structured analysis will include an assessment of {company_short} "
+                f"customer-facing interfaces, including {ifaces_str}.",
+                font_size=8.5, color=C_BODY_LITE)
+
+    # ─ 5e. Protiviti branding ─────────────────────────────────
+    add_textbox(slide,
+                SW - Inches(1.6), SH - Inches(0.38), Inches(1.4), Inches(0.3),
+                "protiviti®", font_size=9, italic=True,
+                color=C_BODY_LITE, align=PP_ALIGN.RIGHT)
+
+    # Slide number
+    add_textbox(slide,
+                LP_X, SH - Inches(0.38), Inches(0.5), Inches(0.3),
+                "5", font_size=9, bold=True, color=C_WHITE)
+
+
+# ─────────────────────────────────────────────────────────────
+# HOSTING TEXT BUILDER
+# ─────────────────────────────────────────────────────────────
+def _build_hosting_text(info: dict) -> str:
+    h   = info.get("hosting_model", "")
+    spec = info.get("hosting_specify", "")
+    parts = []
+    if "On-premise" in h or "On-Premise" in h:
+        parts.append("On-Premise")
+    if "Cloud" in h:
+        parts.append("Cloud")
+    if "Hybrid" in h:
+        parts.append("Hybrid")
+    mode = " / ".join(parts) if parts else (h or "On-Premise")
+    if spec:
+        return f"{mode} Hosting: Personal data is stored and hosted on {spec}."
+    return f"{mode} Hosting: All personal data is currently stored on {mode} infrastructure."
+
+
+# ─────────────────────────────────────────────────────────────
 # HELPER: Scrape website
 # ─────────────────────────────────────────────────────────────
-def scrape_website(url: str, max_chars: int = 6000) -> str:
+def scrape_website(url: str, max_chars: int = 5000) -> str:
     try:
-        resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=12)
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "lxml")
+        r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=12)
+        r.raise_for_status()
+        soup = BeautifulSoup(r.text, "lxml")
         for tag in soup(["script","style","nav","footer","header"]):
             tag.decompose()
-        text = re.sub(r"\s+", " ", soup.get_text(separator=" ", strip=True))
-        return text[:max_chars]
+        return re.sub(r"\s+", " ", soup.get_text(" ", strip=True))[:max_chars]
     except Exception as e:
         return f"[Website scrape failed: {e}]"
+
 
 # ─────────────────────────────────────────────────────────────
 # HELPER: Parse Pre-Scoping Questionnaire
 # ─────────────────────────────────────────────────────────────
 def parse_questionnaire(docx_bytes: bytes) -> dict:
-    """
-    Reads the structured questionnaire tables and returns a dict of answers.
-    The questionnaire has alternating header tables + data tables.
-    Table indices (0-indexed):
-      0  – title row
-      1  – ORGANISATIONAL OVERVIEW header
-      2  – org data  (rows: subsidiaries, centralised IT/HR/Legal, employee strength)
-      3  – GOVERNANCE header
-      4  – governance data  (privacy committee, decision makers, policy status)
-      5  – BUSINESS LINES header
-      6  – business data  (core lines, key stakeholders)
-      7  – DATA ECOSYSTEM header
-      8  – ecosystem data  (customer interfaces, apps, data discovery, hosting)
-      9  – DATA SUBJECTS header
-      10 – data subjects data  (data subject categories, data types)
-      11 – footer
-    """
-    doc = DocxDocument(io.BytesIO(docx_bytes))
+    doc    = DocxDocument(io.BytesIO(docx_bytes))
     tables = doc.tables
 
     def cell(ti, ri, ci):
@@ -101,376 +428,295 @@ def parse_questionnaire(docx_bytes: bytes) -> dict:
         except:
             return ""
 
-    def pick_checked(text: str) -> list:
-        """Return lines that look 'selected' (no leading spaces = checked in this doc)."""
-        lines = text.split("\n")
-        # Lines without leading whitespace are the checked items (template uses indent for unchecked)
-        checked = [l.strip() for l in lines if l and not l.startswith("  ")]
-        return [c for c in checked if c and not c.lower().startswith("if ") 
-                and not c.lower().startswith("please") and c != "Yes" and c != "No"]
-
-    def first_line(text: str) -> str:
-        return text.split("\n")[0].strip()
-
-    # ── Org Overview (table index 2) ──────────────────────────
-    subsidiaries_text  = cell(2, 1, 2)
-    emp_strength_text  = cell(2, 3, 2)
-
-    # Extract subsidiary info
-    has_subsidiaries = "Yes" in subsidiaries_text.split("\n")[0] or \
-                       not subsidiaries_text.startswith("  ")
-    subsidiary_detail = ""
-    for line in subsidiaries_text.split("\n"):
-        line = line.strip()
-        if line and not line in ("Yes","No") and not line.startswith("If Yes"):
-            subsidiary_detail = line
-            break
-
-    # Extract employee count
+    # Employee count (table 2, row 3)
+    emp_raw = cell(2, 3, 2)
     emp_count = ""
-    for line in emp_strength_text.split("\n"):
-        line = line.strip()
-        if line and line not in ("< 500","500 – 1,000","1,000 – 5,000","> 5,000") \
-                and not line.startswith("If > 5,000"):
-            if ">" in line or "<" in line or "–" in line:
-                emp_count = line
+    for line in emp_raw.split("\n"):
+        s = line.strip()
+        if s and not s.startswith("If") and not s.startswith("Please"):
+            if any(x in s for x in ["<","–",">"]):
+                emp_count = s
                 break
-    # Also check for explicit spec
-    for line in emp_strength_text.split("\n"):
+    for line in emp_raw.split("\n"):
         if "specify" in line.lower():
-            val = line.split(":")[-1].strip().replace("__","").strip()
+            val = line.split(":")[-1].strip().replace("_","").strip()
             if val:
                 emp_count = val
                 break
     if not emp_count:
-        emp_count = first_line(emp_strength_text)
+        emp_count = emp_raw.split("\n")[0].strip()
 
-    # ── Governance (table index 4) ──────────────────────────
-    policy_status_text = cell(4, 3, 2)
+    # Policy status (table 4, row 3)
+    policy_raw = cell(4, 3, 2)
     policy_status = ""
-    for line in policy_status_text.split("\n"):
-        line = line.strip()
-        if line and line not in ("Yes, centralised global office","Yes, regional offices",
-                                  "No, decisions taken by IT / Legal / Other","No formal structure",
-                                  "Existing framework in place (requires update)",
-                                  "Drafted but not implemented",
-                                  "Needs to be formulated from scratch","Other"):
-            policy_status = line
-            break
-    if not policy_status:
-        # pick first non-empty, non-option line
-        for line in policy_status_text.split("\n"):
-            s = line.strip()
-            if s:
-                policy_status = s
-                break
-
-    # ── Business Lines (table index 6) ──────────────────────
-    core_lines_text   = cell(6, 1, 2)
-    stakeholders_text = cell(6, 2, 2)
-
-    core_lines = []
-    for line in core_lines_text.split("\n"):
-        line = line.strip()
-        if line and not line.startswith("Specify") and not line.startswith("Please") \
-                and not line.startswith("Other") and not line.startswith("__"):
-            core_lines.append(line)
-
-    departments = []
-    for line in stakeholders_text.split("\n"):
-        line = line.strip()
-        if line and not line.startswith("Other") and not line.startswith("Specify") \
-                and not line.startswith("__") and "Departments" not in line:
-            # pull out department name from lines like "Departments - Finance, Purchase..."
-            if "Departments" in line or "," in line:
-                for dept in re.split(r"[,\-]", line):
-                    dept = dept.strip()
-                    if dept and len(dept) > 2:
-                        departments.append(dept)
-            else:
-                departments.append(line)
-    if not departments:
-        departments = ["HR & People Operations","IT & Cybersecurity","Legal & Compliance",
-                       "Finance","Sales","Manufacturing Operations"]
-
-    # ── Data Ecosystem (table index 8) ──────────────────────
-    interfaces_text   = cell(8, 1, 2)
-    apps_text         = cell(8, 2, 2)
-    hosting_text      = cell(8, 4, 2)
-
-    interfaces = []
-    for line in interfaces_text.split("\n"):
-        line = line.strip()
-        if line and not line.startswith("Other") and not line.startswith("Specify") \
-                and not line.startswith("Please") and not line.startswith("__"):
-            interfaces.append(line)
-
-    apps = []
-    for line in apps_text.split("\n"):
-        line = line.strip()
-        if line and not line.startswith("Other") and not line.startswith("Specify") \
-                and not line.startswith("__"):
-            apps.append(line)
-
-    # Hosting
-    hosting = ""
-    for line in hosting_text.split("\n"):
+    for line in policy_raw.split("\n"):
         s = line.strip()
-        if s and not s.startswith("__"):
-            hosting = s
-            break
-    hosting_specify = ""
-    for line in hosting_text.split("\n"):
-        if "specify" in line.lower() or "ERP" in line or "SAP" in line or "HRMS" in line:
+        if s and "specify" in line.lower():
             val = line.split(":")[-1].strip().replace("_","").strip()
             if val:
-                hosting_specify = val
+                policy_status = val
                 break
+    if not policy_status:
+        policy_status = policy_raw.split("\n")[0].strip()
 
-    # ── Data Subjects (table index 10) ──────────────────────
-    subjects_text   = cell(10, 1, 2)
-    data_types_text = cell(10, 2, 2)
+    # Business lines (table 6, row 1)
+    blines_raw = cell(6, 1, 2)
+    blines = []
+    for line in blines_raw.split("\n"):
+        s = line.strip()
+        if (s and not s.startswith("Specify") and not s.startswith("Please")
+                and not s.startswith("Other") and not s.startswith("__")
+                and not s.startswith("JV")):
+            blines.append(s)
 
-    data_subjects = []
-    for line in subjects_text.split("\n"):
-        line = line.strip()
-        if line and not line.startswith("Other") and not line.startswith("Specify") \
-                and not line.startswith("Please") and not line.startswith("__"):
-            # Clean trailing parenthetical
-            name = re.sub(r"\s*\(.*\)", "", line).strip()
-            if name:
-                data_subjects.append(name)
+    # Departments (table 6, row 2)
+    dept_raw = cell(6, 2, 2)
+    depts = []
+    extra = ""
+    for line in dept_raw.split("\n"):
+        s = line.strip()
+        if "Departments" in s and ":" in s:
+            extra = s.split(":",1)[-1].strip()
+        elif (s and not s.startswith("Other") and not s.startswith("Specify")
+              and not s.startswith("__") and "Departments" not in s):
+            depts.append(s)
+    if extra:
+        for d in re.split(r"[,/]", extra):
+            d = d.strip()
+            if d and len(d) > 2:
+                depts.append(d)
+    if not depts:
+        depts = ["HR & People Operations","IT & Cybersecurity","Legal & Compliance",
+                 "Finance","Sales","Manufacturing Operations"]
 
-    data_types = []
-    for line in data_types_text.split("\n"):
-        line = line.strip()
-        if line and not line.startswith("Other") and not line.startswith("Specify") \
-                and not line.startswith("__"):
-            name = re.sub(r"\s*\(.*\)", "", line).strip()
-            if name:
-                data_types.append(name)
+    # Applications (table 8, row 2)
+    apps_raw = cell(8, 2, 2)
+    apps = []
+    for line in apps_raw.split("\n"):
+        s = line.strip()
+        if (s and not s.startswith("Other") and not s.startswith("Specify")
+                and not s.startswith("__")):
+            apps.append(s)
+
+    # Interfaces (table 8, row 1)
+    iface_raw = cell(8, 1, 2)
+    ifaces = []
+    for line in iface_raw.split("\n"):
+        s = line.strip()
+        if (s and not s.startswith("Other") and not s.startswith("Specify")
+                and not s.startswith("Please") and not s.startswith("__")):
+            ifaces.append(s)
+
+    # Hosting (table 8, row 4)
+    hosting_raw = cell(8, 4, 2)
+    hosting = hosting_raw.split("\n")[0].strip()
+    hosting_spec = ""
+    for line in hosting_raw.split("\n"):
+        if ("ERP" in line or "SAP" in line or "HRMS" in line or
+                "specify" in line.lower()):
+            hosting_spec = line.split(":")[-1].strip().replace("_","").strip()
+            break
+
+    # Data subjects (table 10, row 1)
+    subj_raw = cell(10, 1, 2)
+    subjects = []
+    for line in subj_raw.split("\n"):
+        s = re.sub(r"\s*\(.*\)","", line.strip()).strip()
+        if (s and not s.startswith("Other") and not s.startswith("Specify")
+                and not s.startswith("Please") and not s.startswith("__")):
+            subjects.append(s)
+
+    # Data types (table 10, row 2)
+    dtype_raw = cell(10, 2, 2)
+    dtypes = []
+    for line in dtype_raw.split("\n"):
+        s = re.sub(r"\s*\(.*\)","", line.strip()).strip()
+        if (s and not s.startswith("Other") and not s.startswith("Specify")
+                and not s.startswith("__")):
+            dtypes.append(s)
 
     return {
-        "has_subsidiaries": has_subsidiaries,
-        "subsidiary_detail": subsidiary_detail,
-        "employee_count": emp_count or "—",
-        "policy_status": policy_status,
-        "core_business_lines": core_lines,
-        "departments": [d for d in departments if d],
-        "customer_interfaces": interfaces,
-        "applications": apps,
-        "hosting_model": hosting,
-        "hosting_specify": hosting_specify,
-        "data_subjects": data_subjects,
-        "data_types": data_types,
+        "employee_count":       emp_count or "—",
+        "policy_status":        policy_status,
+        "core_business_lines":  blines,
+        "departments":          [d for d in depts if d],
+        "applications":         apps,
+        "customer_interfaces":  ifaces,
+        "hosting_model":        hosting,
+        "hosting_specify":      hosting_spec,
+        "data_subjects":        subjects,
+        "data_types":           dtypes,
     }
+
 
 # ─────────────────────────────────────────────────────────────
 # GROQ HELPERS
 # ─────────────────────────────────────────────────────────────
 GROQ_MODEL = "llama-3.3-70b-versatile"
 
-def groq_call(client: Groq, prompt: str, max_tokens: int = 1500) -> str:
-    resp = client.chat.completions.create(
+def groq_call(client: Groq, prompt: str, max_tokens: int = 900) -> str:
+    r = client.chat.completions.create(
         model=GROQ_MODEL,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[{"role":"user","content": prompt}],
         temperature=0.25,
         max_tokens=max_tokens,
     )
-    return resp.choices[0].message.content.strip()
+    return r.choices[0].message.content.strip()
+
+def ctx(company_name, company_short, info, website_text) -> str:
+    return (
+        f"Company: {company_name} ({company_short})\n"
+        f"Business lines: {', '.join(info['core_business_lines'])}\n"
+        f"Departments: {', '.join(info['departments'])}\n"
+        f"Employees: {info['employee_count']}\n"
+        f"Hosting: {info['hosting_model']} – {info['hosting_specify']}\n"
+        f"Applications: {', '.join(info['applications'])}\n"
+        f"Interfaces: {', '.join(info['customer_interfaces'])}\n"
+        f"Data subjects: {', '.join(info['data_subjects'])}\n"
+        f"Website extract: {website_text[:1200]}"
+    )
 
 
-def build_context(company_name, company_short, info: dict, website_text: str) -> str:
-    return f"""
-Company Full Name: {company_name}
-Company Short Name: {company_short}
-Industry: Specialty Glass & Pharmaceutical Packaging
-Business Lines: {", ".join(info["core_business_lines"])}
-Departments in scope: {", ".join(info["departments"])}
-Employee Count: {info["employee_count"]}
-Hosting: {info["hosting_model"]} — {info["hosting_specify"]}
-Applications: {", ".join(info["applications"])}
-Customer-facing interfaces: {", ".join(info["customer_interfaces"])}
-Data Subjects: {", ".join(info["data_subjects"])}
-Data Types: {", ".join(info["data_types"])}
-Website extract: {website_text[:1500]}
-""".strip()
+# ── SLIDE 4 PROMPTS (strict word limits to prevent text overflow) ──────────
 
+P_DESC = """
+Rewrite the paragraph below for a NEW company. Replace ALL Eveready/EIIL-specific facts \
+(products, manufacturing type, distribution) with facts for the new company. \
+STRICT LIMIT: 80–90 words maximum. Keep professional consulting tone.
 
-# ── Slide 4: Company description paragraph ──────────────────
-SLIDE4_DESC_PROMPT = """
-You are writing content for a professional data-privacy consulting proposal.
-
-Rewrite the paragraph below — originally written for Eveready Industries India Ltd. (EIIL) — 
-so it accurately describes the NEW company. Replace every industry-specific fact 
-(products, manufacturing type, distribution model, capabilities) with facts relevant to 
-the new company. Keep the sentence structure, professional tone, and approximate length.
-
-NEW COMPANY CONTEXT:
+NEW COMPANY:
 {context}
 
-ORIGINAL PARAGRAPH:
-Eveready Industries India Ltd. (EIIL) is a leading Indian manufacturer of portable energy and \
-lighting solutions, operating through a diversified multi‑segment model spanning dry‑cell batteries, \
-flashlights, consumer lighting, professional lighting and electrical accessories across domestic and \
-select international markets. The company follows a predominantly B2B and B2B2C‑driven model, serving \
-distributors, retailers, institutional buyers and large‑scale channel partners through one of India's \
-widest FMCG‑style distribution networks, while maintaining limited B2C interfaces through brand \
-engagement, after‑sales support and product service programs. EIIL enables end‑to‑end product \
-development, high‑volume manufacturing, nationwide distribution and lifecycle management through \
-technology‑driven quality systems, DSIR‑approved R&D capabilities, integrated manufacturing \
-facilities and data‑enabled supply‑chain operations, ensuring safe, reliable, compliant and \
-cost‑efficient delivery of portable power and lighting solutions across diverse consumer and commercial segments.
+ORIGINAL (do NOT copy — rewrite for new company):
+Eveready Industries India Ltd. (EIIL) is a leading Indian manufacturer of portable energy \
+and lighting solutions, operating through a diversified multi‑segment model spanning dry‑cell \
+batteries, flashlights, consumer lighting, professional lighting and electrical accessories \
+across domestic and select international markets. The company follows a predominantly B2B and \
+B2B2C‑driven model, serving distributors, retailers, institutional buyers and large‑scale \
+channel partners through one of India's widest FMCG‑style distribution networks, while \
+maintaining limited B2C interfaces through brand engagement, after‑sales support and product \
+service programs. EIIL enables end‑to‑end product development, high‑volume manufacturing, \
+nationwide distribution and lifecycle management through technology‑driven quality systems, \
+DSIR‑approved R&D capabilities, integrated manufacturing facilities and data‑enabled supply‑chain \
+operations, ensuring safe, reliable, compliant and cost‑efficient delivery of portable power and \
+lighting solutions across diverse consumer and commercial segments.
 
-Return ONLY the rewritten paragraph. No labels, no quotes, no extra text.
+Return ONLY the rewritten paragraph. Max 90 words.
 """
 
-# ── Slide 4: Scope understanding paragraph ──────────────────
-SLIDE4_SCOPE_PROMPT = """
-Rewrite the scope paragraph below, replacing ALL references to EIIL / Eveready Industries / \
-"lending, leasing and factoring operations" with the new company's actual operations.
-Adjust any industry-specific wording (manufacturing, distribution channels, supply chain) 
-to match the new company. Keep compliance/privacy content exactly as-is. Same length.
+P_SCOPE = """
+Rewrite the sentence below for a NEW company. Replace industry-specific operations \
+("lending, leasing and factoring operations") with the new company's actual operations. \
+Keep all DPDPA/privacy language exactly as-is. Max 45 words.
 
-NEW COMPANY CONTEXT:
+NEW COMPANY:
 {context}
 
 ORIGINAL:
 EIIL seeks support to establish a robust, end-to-end data privacy and personal data protection \
 program aligned with the Digital Personal Data Protection Act, 2023 and applicable Rules, \
-calibrated to its people, process and technology landscape across lending, leasing and factoring operations.
+calibrated to its people, process and technology landscape across lending, leasing and \
+factoring operations.
 
-Return ONLY the rewritten paragraph.
+Return ONLY the rewritten sentence.
 """
 
-# ── Slide 4: Bullet points (multiple, one per original bullet) ──
-SLIDE4_BULLETS_PROMPT = """
-Rewrite each bullet point below, replacing EIIL-specific industry terms \
-(manufacturing, R&D, supply chain, distribution, batteries, flashlights, lighting, distributors, \
-retailers, logistics partners) with terminology matching the new company.
+P_BULLETS = """
+Rewrite the 7 bullet points below for a NEW company. Replace EIIL-specific industry terms \
+(manufacturing, R&D, supply chain, distribution, batteries, flashlights, distributors, retailers, \
+logistics) with equivalent terms for the new company. Keep ALL privacy/compliance language \
+exactly as-is. Max 30 words per bullet.
 
-Keep ALL privacy/compliance language exactly as-is. Keep each bullet approximately the same length.
-Return ONLY the rewritten bullets, one per line, in the SAME ORDER.
-
-NEW COMPANY CONTEXT:
+NEW COMPANY:
 {context}
 
-ORIGINAL BULLETS (one per line):
-{bullets}
+BULLETS (rewrite each, keep same order, return one per line):
+1. Conduct an enterprise-wide applicability assessment and privacy gap analysis, covering data discovery, lifecycle mapping, inventories, RoPA and documentation of internal/external data flows across EIIL's manufacturing, R&D, supply chain, procurement, commercial, HR, enterprise systems and distribution operations.
+2. Assess privacy, information security and regulatory risks across EIIL's manufacturing, quality, logistics, commercial, enterprise and SaaS platforms, including analytics environments, physical repositories and third-party networks such as distributors, retailers, logistics partners and service vendors.
+3. Evaluate governance structures, policies and controls covering lawful purpose, consent (where applicable), retention, erasure, grievance handling, DPR workflows, cross-border transfers and personal data breach processes.
+4. Design and operationalize a scalable privacy governance and risk framework, defining roles, accountability, escalation paths and procedures for DPIAs and risk-based reviews of new systems, digital initiatives and operational programs.
+5. Support rollout of updated privacy policies, notices and procedures for consent, DPR, retention/deletion, breach response and DPIA processes, tailored for corporate, manufacturing, R&D, commercial and customer-facing teams.
+6. Coordinate remediation across key platforms to strengthen consent workflows, DPR handling, third-party data sharing controls, data minimization and privacy-by-design requirements with support from selected tooling partners.
+7. Deliver role-based privacy training, define governance KPIs and RACI structures and enable reporting and dashboards to support continuous oversight, audit readiness, regulatory preparedness and executive visibility.
+
+Return numbered lines (1. text, 2. text …). No extra commentary.
 """
 
-# ── Slide 11: Privacy Operating Model paragraph ──────────────
-SLIDE11_PROMPT = """
-Rewrite the paragraph below, replacing EIIL-specific language with language 
-matching the new company's industry and operations. 
-Keep the privacy-methodology content exactly as-is.
+P_S11 = """
+Rewrite the paragraph below for a NEW company. Replace "Eveready Industries India Ltd." and \
+"manufacturing, supply-chain, commercial, distribution" with the new company's operations. \
+Keep the privacy methodology framing. Max 50 words.
 
-NEW COMPANY CONTEXT:
+NEW COMPANY:
 {context}
 
 ORIGINAL:
 For this engagement, the privacy compliance model will be applied exclusively to the internal \
 functions, processes and governance structures of Eveready Industries India Ltd., supporting its \
-manufacturing, supply‑chain, commercial, distribution and corporate operations, which primarily \
+manufacturing, supply-chain, commercial, distribution and corporate operations, which primarily \
 operate through B2B and B2B2C channels, with limited B2C personal data processing through \
 customer service interactions, digital platform usage and product service requests.
 
-Return ONLY the rewritten paragraph (single paragraph, no labels).
+Return ONLY the rewritten paragraph.
 """
 
-# ── Slide 17: Data Lifecycle (6 sections) ──────────────────
-SLIDE17_PROMPT = """
-Rewrite all six Data Lifecycle section paragraphs below for the new company.
-Replace EVERY reference to Eveready/EIIL-specific products, operations, systems and processes \
-with equivalent references for the new company. Keep the privacy/data-governance framing identical.
+P_S17 = """
+Rewrite all 6 Data Lifecycle paragraphs for a NEW company. Replace EVERY Eveready/EIIL-specific \
+product, process and system reference with equivalent references for the new company. \
+Keep privacy/data-governance framing identical. Max 55 words per section.
 
-NEW COMPANY CONTEXT:
+NEW COMPANY:
 {context}
 
-Return a JSON object with exactly these keys: 
-"collection", "use_processing", "storage", "sharing", "retention", "disposal"
-Each value = the rewritten paragraph (no section title, just the text).
+Return a JSON object with keys: \
+"collection","use_processing","storage","sharing","retention","disposal"
+Each value = the rewritten paragraph text only (no title prefix).
 Return ONLY valid JSON, no markdown fences.
 
 ORIGINALS:
-01. Data Collection: We will review how Eveready Industries India Ltd. (EIIL) collects personal, \
-operational and regulatory data across functions such as employee onboarding; manufacturing processes \
-for batteries, flashlights and lighting products; distributor onboarding; sales operations; \
-supply‑chain coordination; and customer service requirements. This includes data captured through \
-ERP systems, plant‑level manufacturing platforms, distributor management portals, helpdesk \
-and CRM interfaces.
-
-02. Data Use & Processing: We will assess how collected data is used for manufacturing planning, \
-quality control, inventory management, supply chain coordination, compliance reporting and \
-performance monitoring across EIIL's key segments: batteries, flashlights, consumer lighting, \
-professional lighting and electrical accessories. This includes data integration across systems \
-such as ERP, CRM, distributor management systems and quality monitoring platforms.
-
-03. Data Storage: We will examine secure storage of manufacturing, safety, employee and vendor data \
-across cloud platforms, on‑premise servers at EIIL's manufacturing units, validated production systems, \
-backup systems and R&D repositories. Controls for authentication, role‑based access, audit trails and \
-compliance with applicable industry and corporate guidelines will also be reviewed.
-
-04. Data Sharing: We will evaluate data‑sharing practices with distributors, logistics partners, \
-manufacturing vendors, regulatory authorities, retailers and internal teams. This includes reviewing \
-contractual safeguards, supply‑chain data‑processing requirements, cross‑border data transfer \
-practices (where applicable), anonymization procedures and security measures.
-
-05. Data Retention: We will review retention policies for manufacturing logs, quality‑control reports, \
-product testing data, R&D records, HR and payroll files, vendor documentation, distributor agreements, \
-operational logs and financial documentation. Retention requirements will be assessed against regulatory \
-mandates, audit requirements and internal EIIL governance policies.
-
-06. Data Disposal: We will verify secure deletion, destruction and anonymization of records across \
-digital platforms, manufacturing systems, archival repositories, distributor management systems and \
-physical documentation. Disposal workflows will be reviewed for alignment with regulatory expectations \
-and internal EIIL data‑governance guidelines to ensure safe and compliant handling of obsolete data.
+collection: We will review how Eveready Industries India Ltd. (EIIL) collects personal, operational and regulatory data across functions such as employee onboarding; manufacturing processes for batteries, flashlights and lighting products; distributor onboarding; sales operations; supply-chain coordination; and customer service requirements. This includes data captured through ERP systems, plant-level manufacturing platforms, distributor management portals, helpdesk and CRM interfaces.
+use_processing: We will assess how collected data is used for manufacturing planning, quality control, inventory management, supply chain coordination, compliance reporting and performance monitoring across EIIL's key segments: batteries, flashlights, consumer lighting, professional lighting and electrical accessories. This includes data integration across systems such as ERP, CRM, distributor management systems and quality monitoring platforms.
+storage: We will examine secure storage of manufacturing, safety, employee and vendor data across cloud platforms, on-premise servers at EIIL's manufacturing units, validated production systems, backup systems and R&D repositories. Controls for authentication, role-based access, audit trails and compliance with applicable industry and corporate guidelines will also be reviewed.
+sharing: We will evaluate data-sharing practices with distributors, logistics partners, manufacturing vendors, regulatory authorities, retailers and internal teams. This includes reviewing contractual safeguards, supply-chain data-processing requirements, cross-border data transfer practices (where applicable), anonymization procedures and security measures.
+retention: We will review retention policies for manufacturing logs, quality-control reports, product testing data, R&D records, HR and payroll files, vendor documentation, distributor agreements, operational logs and financial documentation. Retention requirements will be assessed against regulatory mandates, audit requirements and internal EIIL governance policies.
+disposal: We will verify secure deletion, destruction and anonymization of records across digital platforms, manufacturing systems, archival repositories, distributor management systems and physical documentation. Disposal workflows will be reviewed for alignment with regulatory expectations and internal EIIL data-governance guidelines.
 """
 
+
 # ─────────────────────────────────────────────────────────────
-# PPTX MANIPULATION HELPERS
+# PPTX TEXT REPLACEMENT (all other slides)
 # ─────────────────────────────────────────────────────────────
-def replace_in_para(para, replacements: dict):
-    """Replace across all runs of a paragraph preserving formatting of run[0]."""
+def _rep_para(para, rep: dict):
     full = "".join(r.text for r in para.runs)
-    if not any(k in full for k in replacements if k):
+    if not any(k in full for k in rep if k):
         return
     new = full
-    for old, nw in replacements.items():
-        if old and nw is not None:
-            new = new.replace(old, nw)
+    for k, v in rep.items():
+        if k and v is not None:
+            new = new.replace(k, v)
     if new != full and para.runs:
         para.runs[0].text = new
         for r in para.runs[1:]:
             r.text = ""
 
-
-def replace_in_shape(shape, replacements: dict):
+def _rep_shape(shape, rep: dict):
     if shape.has_text_frame:
-        for para in shape.text_frame.paragraphs:
-            replace_in_para(para, replacements)
+        for p in shape.text_frame.paragraphs:
+            _rep_para(p, rep)
     if shape.has_table:
         for row in shape.table.rows:
             for cell in row.cells:
-                for para in cell.text_frame.paragraphs:
-                    replace_in_para(para, replacements)
+                for p in cell.text_frame.paragraphs:
+                    _rep_para(p, rep)
     if shape.shape_type == 6:
         for s in shape.shapes:
-            replace_in_shape(s, replacements)
+            _rep_shape(s, rep)
 
-
-def replace_slide(slide, replacements: dict):
+def rep_slide(slide, rep: dict):
     for shape in slide.shapes:
-        replace_in_shape(shape, replacements)
+        _rep_shape(shape, rep)
 
-
-def set_paragraph_text(slide, shape_name: str, old_fragment: str,
-                        new_text: str, occurrence: int = 0) -> bool:
-    """
-    Find the paragraph in shape_name whose combined text contains old_fragment
-    (n-th occurrence) and replace its full text with new_text.
-    """
-    found = 0
+def set_para_text(slide, shape_name: str, fragment: str, new_text: str) -> bool:
     for shape in slide.shapes:
         if shape_name and shape.name != shape_name:
             continue
@@ -478,364 +724,195 @@ def set_paragraph_text(slide, shape_name: str, old_fragment: str,
             continue
         for para in shape.text_frame.paragraphs:
             full = "".join(r.text for r in para.runs)
-            if old_fragment in full:
-                if found == occurrence:
-                    if para.runs:
-                        para.runs[0].text = new_text
-                        for r in para.runs[1:]:
-                            r.text = ""
-                    return True
-                found += 1
-    return False
-
-
-def set_textbox_full(slide, shape_name: str, new_text: str) -> bool:
-    """Replace entire text content of a named shape (first paragraph)."""
-    for shape in slide.shapes:
-        if shape.name == shape_name and shape.has_text_frame:
-            if shape.text_frame.paragraphs:
-                para = shape.text_frame.paragraphs[0]
+            if fragment in full:
                 if para.runs:
                     para.runs[0].text = new_text
                     for r in para.runs[1:]:
                         r.text = ""
-            return True
+                return True
     return False
 
 
-def get_shape_full_text(slide, shape_name: str) -> str:
-    for shape in slide.shapes:
-        if shape.name == shape_name and shape.has_text_frame:
-            return "\n".join(
-                "".join(r.text for r in p.runs)
-                for p in shape.text_frame.paragraphs
-            )
-    return ""
-
 # ─────────────────────────────────────────────────────────────
-# HOSTING TEXT BUILDER
+# MAIN BUILD
 # ─────────────────────────────────────────────────────────────
-def build_hosting_text(info: dict) -> str:
-    h = info["hosting_model"]
-    spec = info["hosting_specify"]
-    parts = []
-    if "On-premise" in h:
-        parts.append("On-Premise")
-    if "Cloud" in h:
-        parts.append("Cloud")
-    if "Hybrid" in h:
-        parts.append("Hybrid")
-    mode = "/".join(parts) if parts else h
-    base = f"{mode} Hosting"
-    if spec:
-        return f"{base}: Personal data is stored and hosted on {spec}."
-    return f"{base}: Personal data is currently stored on {mode} infrastructure."
-
-# ─────────────────────────────────────────────────────────────
-# MAIN PPTX BUILDER
-# ─────────────────────────────────────────────────────────────
-def build_presentation(
-    pptx_bytes: bytes,
-    company_name: str,
-    company_short: str,
-    info: dict,
-    ai: dict,
-) -> bytes:
+def build_presentation(pptx_bytes, company_name, company_short, info, ai):
     prs = Presentation(io.BytesIO(pptx_bytes))
 
-    # Global name replacements applied to EVERY slide
-    global_rep = {
+    # Global name replacements
+    gmap = {
         "Eveready Industries India Ltd. (EIIL)": company_name,
-        "Eveready Industries India Ltd": company_name.split("(")[0].strip().rstrip(),
-        "Eveready Industries": company_name.split("(")[0].strip().rstrip(),
-        " EIIL'": f" {company_short}'",
+        "Eveready Industries India Ltd":         company_name.split("(")[0].strip(),
+        "Eveready Industries":                   company_name.split("(")[0].strip(),
+        " EIIL'":  f" {company_short}'",
         " EIIL's": f" {company_short}'s",
-        "(EIIL)": f"({company_short})",
-        "EIIL": company_short,
+        "(EIIL)":  f"({company_short})",
+        "EIIL":    company_short,
     }
     for slide in prs.slides:
-        replace_slide(slide, global_rep)
+        rep_slide(slide, gmap)
 
-    # ── SLIDE 1 ──────────────────────────────────────────────
-    # Already handled by global replacements (company name + date is unchanged = March 2026)
-
-    # ── SLIDE 4 (index 3) ───────────────────────────────────
+    # ── Slide 4 (index 3) ────────────────────────────────────
     if len(prs.slides) > 3:
         s4 = prs.slides[3]
-        # Company description paragraph (TextBox 8)
-        set_paragraph_text(s4, "TextBox 8", "leading Indian manufacturer", ai["slide4_desc"])
-        # Scope understanding paragraph (TextBox 3, first paragraph)
-        set_paragraph_text(s4, "TextBox 3", "seeks support to establish", ai["slide4_scope"])
-        # Bullet paragraphs in TextBox 3 (index 1 onward)
-        bullets = ai.get("slide4_bullets", [])
-        bullet_originals = [
-            "Conduct an enterprise",
-            "Assess privacy, information security",
-            "Evaluate governance structures",
-            "Design and operationalize",
-            "Support rollout of updated privacy policies",
-            "Coordinate remediation across key platforms",
-            "Deliver role",
-        ]
-        for i, (frag, new_bullet) in enumerate(zip(bullet_originals, bullets)):
-            set_paragraph_text(s4, "TextBox 3", frag, new_bullet)
+        set_para_text(s4, "TextBox 8", "leading", ai["s4_desc"])
+        set_para_text(s4, "TextBox 3", "seeks support", ai["s4_scope"])
+        for frag, new_b in zip(
+            ["Conduct an enterprise","Assess privacy, information security",
+             "Evaluate governance","Design and operationalize",
+             "Support rollout","Coordinate remediation","Deliver role"],
+            ai.get("s4_bullets", [])
+        ):
+            set_para_text(s4, "TextBox 3", frag, new_b)
 
-    # ── SLIDE 5 (index 4) ───────────────────────────────────
+    # ── Slide 5 (index 4) — full rebuild ─────────────────────
     if len(prs.slides) > 4:
-        s5 = prs.slides[4]
+        rebuild_slide5(prs.slides[4], company_name, company_short, info)
 
-        # Employee count
-        replace_slide(s5, {"1200+": info["employee_count"]})
-
-        # Hosting text
-        hosting_txt = build_hosting_text(info)
-        set_paragraph_text(s5, "TextBox 31",
-            "100% On-Premise Hosting", hosting_txt)
-
-        # Application Ecosystem
-        apps_str = ", ".join(info["applications"][:6]) if info["applications"] else "ERP, CRM, HRMS"
-        set_paragraph_text(s5, "TextBox 19",
-            "utilizes core enterprise applications",
-            f"{company_short} utilizes core enterprise applications including {apps_str}.")
-
-        # Departments
-        depts = info["departments"]
-        n = len(depts)
-        dept_str = ", ".join(depts)
-        set_paragraph_text(s5, "TextBox 38",
-            "Audit coverage includes assessment",
-            f"Audit coverage includes assessment of data handling practices within "
-            f"{n} departments such as {dept_str}")
-
-        # Data Subjects (individual text boxes)
-        subject_shapes = ["TextBox 102","TextBox 104","TextBox 106",
-                          "TextBox 108","TextBox 111","TextBox 113"]
-        subjects = info["data_subjects"]
-        for i, shape_name in enumerate(subject_shapes):
-            if i < len(subjects):
-                set_textbox_full(s5, shape_name, subjects[i])
-            else:
-                set_textbox_full(s5, shape_name, "")
-
-        # Critical data types label row (TextBox 96 = "Service logs & complaints")
-        if info["data_types"]:
-            set_textbox_full(s5, "TextBox 96", info["data_types"][-1] if len(info["data_types"]) > 1 else "")
-
-    # ── SLIDE 11 (index 10) ──────────────────────────────────
+    # ── Slide 11 (index 10) ──────────────────────────────────
     if len(prs.slides) > 10:
-        s11 = prs.slides[10]
-        set_paragraph_text(s11, "Rectangle 1",
-            "For this engagement, the privacy compliance model",
-            ai["slide11_para"])
+        set_para_text(prs.slides[10], "Rectangle 1",
+                      "For this engagement", ai["s11"])
 
-    # ── SLIDE 12 (index 11) ──────────────────────────────────
-    # Global replacements already handled; no extra AI content needed here.
-
-    # ── SLIDE 14 (index 13) ──────────────────────────────────
-    # Global replacements already handled.
-
-    # ── SLIDE 17 (index 16) ──────────────────────────────────
+    # ── Slide 17 (index 16) ──────────────────────────────────
     if len(prs.slides) > 16:
-        s17 = prs.slides[16]
-        lc = ai.get("slide17_lifecycle", {})
-        mapping = {
-            "Rectangle 41": ("01. Data Collection", lc.get("collection","")),
-            "Rectangle 8":  ("02. Data Use & Processing", lc.get("use_processing","")),
-            "Rectangle 9":  ("03. Data Storage", lc.get("storage","")),
-            "Rectangle 10": ("04. Data Sharing", lc.get("sharing","")),
-            "Rectangle 11": ("05. Data Retention", lc.get("retention","")),
-            "Rectangle 12": ("06. Data Disposal", lc.get("disposal","")),
-        }
-        for shape_name, (title, new_para) in mapping.items():
-            if new_para:
-                # Shape has two paras: title + text. We target the text para.
-                set_paragraph_text(s17, shape_name, "We will", new_para)
-
-    # ── SLIDE 19 (index 18) ──────────────────────────────────
-    # Global replacements already handled (EIIL → company_short in Phase II bullets)
+        s17  = prs.slides[16]
+        lc   = ai.get("s17_lifecycle", {})
+        for shp_name, key in [
+            ("Rectangle 41","collection"), ("Rectangle 8","use_processing"),
+            ("Rectangle 9","storage"),     ("Rectangle 10","sharing"),
+            ("Rectangle 11","retention"),  ("Rectangle 12","disposal"),
+        ]:
+            if lc.get(key):
+                set_para_text(s17, shp_name, "We will", lc[key])
 
     buf = io.BytesIO()
     prs.save(buf)
     buf.seek(0)
     return buf.read()
 
+
 # ─────────────────────────────────────────────────────────────
 # GENERATE FLOW
 # ─────────────────────────────────────────────────────────────
 if generate_btn:
-    errors = []
-    if not groq_api_key:   errors.append("🔑 Groq API Key required.")
-    if not company_name:   errors.append("🏢 Company name required.")
-    if not company_short:  errors.append("🏷️ Short name / abbreviation required.")
-    if not company_website:errors.append("🌐 Website URL required.")
-    if not uploaded_ppt:   errors.append("📁 Template PPTX required.")
-    if not uploaded_docx:  errors.append("📝 Pre-Scoping Questionnaire (.docx) required.")
-    for e in errors:
-        st.error(e)
-    if errors:
-        st.stop()
+    errs = []
+    if not groq_api_key:    errs.append("🔑 Groq API Key required.")
+    if not company_name:    errs.append("🏢 Company name required.")
+    if not company_short:   errs.append("🏷️ Abbreviation required.")
+    if not company_website: errs.append("🌐 Website URL required.")
+    if not uploaded_ppt:    errs.append("📁 Template PPTX required.")
+    if not uploaded_docx:   errs.append("📝 Questionnaire .docx required.")
+    for e in errs: st.error(e)
+    if errs: st.stop()
 
     pptx_bytes = uploaded_ppt.read()
     docx_bytes = uploaded_docx.read()
-    client = Groq(api_key=groq_api_key)
+    client     = Groq(api_key=groq_api_key)
 
-    # ── Step 1: Parse questionnaire ──────────────────────────
-    with st.status("📋 Parsing questionnaire...", expanded=True) as status:
+    # Step 1 – parse questionnaire
+    with st.status("📋 Parsing questionnaire…", expanded=True) as s:
         info = parse_questionnaire(docx_bytes)
-        status.update(label="✅ Questionnaire parsed", state="complete")
+        s.update(label="✅ Questionnaire parsed", state="complete")
 
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("📋 Extracted from Questionnaire")
-        st.json({k: v for k, v in info.items() if v not in (None, "", [], {})})
+        st.json({k: v for k, v in info.items() if v not in (None,"",[],"—")})
 
-    # ── Step 2: Website scrape ───────────────────────────────
-    with st.status("🌐 Scraping company website...", expanded=False) as status:
-        website_text = scrape_website(company_website)
-        ok = not website_text.startswith("[Website")
-        status.update(
-            label="✅ Website scraped" if ok else "⚠️ Could not scrape website (proceeding with questionnaire data)",
-            state="complete" if ok else "error"
-        )
+    # Step 2 – scrape
+    with st.status("🌐 Scraping website…", expanded=False) as s:
+        web = scrape_website(company_website)
+        ok  = not web.startswith("[Website")
+        s.update(label="✅ Website scraped" if ok
+                 else "⚠️ Scrape failed — using questionnaire data only",
+                 state="complete" if ok else "error")
 
-    context = build_context(company_name, company_short, info, website_text)
+    context = ctx(company_name, company_short, info, web)
 
-    # ── Step 3: AI content generation ────────────────────────
+    # Step 3 – AI
     ai = {}
-    with st.status("🤖 Generating AI content for slides...", expanded=True) as status:
+    with st.status("🤖 Generating AI content…", expanded=True) as s:
+        def safe_call(key, prompt, max_tok=900, fallback=""):
+            st.write(f"  → {key}…")
+            try:
+                ai[key] = groq_call(client, prompt, max_tok)
+            except Exception as e:
+                ai[key] = fallback
+                st.warning(f"{key}: {e}")
 
-        # Slide 4 – description
-        st.write("Slide 4 – Company description paragraph...")
+        safe_call("s4_desc",    P_DESC.format(context=context),    700,  f"{company_name} is a leading specialty packaging company…")
+        safe_call("s4_scope",   P_SCOPE.format(context=context),   300,  f"{company_short} seeks support to establish a robust DPDPA privacy program…")
+        raw_b = ""
         try:
-            ai["slide4_desc"] = groq_call(
-                client, SLIDE4_DESC_PROMPT.format(context=context))
+            st.write("  → s4_bullets…")
+            raw_b = groq_call(client, P_BULLETS.format(context=context), 1400)
+            lines = [re.sub(r"^\d+\.\s*","", l).strip()
+                     for l in raw_b.split("\n") if l.strip()]
+            ai["s4_bullets"] = lines
         except Exception as e:
-            ai["slide4_desc"] = f"{company_name} is a leading specialty glass and pharmaceutical packaging manufacturer..."
-            st.warning(f"Slide 4 desc: {e}")
+            ai["s4_bullets"] = []
+            st.warning(f"s4_bullets: {e}")
 
-        # Slide 4 – scope paragraph
-        st.write("Slide 4 – Scope understanding paragraph...")
+        safe_call("s11",        P_S11.format(context=context),     400,
+                  f"For this engagement, the privacy compliance model will be applied to the internal functions and governance structures of {company_name}, supporting its {', '.join(info['core_business_lines'][:2])} and corporate operations.")
         try:
-            ai["slide4_scope"] = groq_call(
-                client, SLIDE4_SCOPE_PROMPT.format(context=context))
+            st.write("  → s17_lifecycle…")
+            raw17 = groq_call(client, P_S17.format(context=context), 2200)
+            raw17 = re.sub(r"^```(?:json)?","", raw17).strip()
+            raw17 = re.sub(r"```$","", raw17).strip()
+            ai["s17_lifecycle"] = json.loads(raw17)
         except Exception as e:
-            ai["slide4_scope"] = f"{company_short} seeks support to establish a robust, end-to-end data privacy program aligned with DPDPA 2023."
-            st.warning(f"Slide 4 scope: {e}")
+            ai["s17_lifecycle"] = {}
+            st.warning(f"s17_lifecycle: {e}")
 
-        # Slide 4 – scope bullets
-        st.write("Slide 4 – Scope bullet points...")
-        orig_bullets = "\n".join([
-            "Conduct an enterprise‑wide applicability assessment and privacy gap analysis, covering data discovery, lifecycle mapping, inventories, RoPA and documentation of internal/external data flows across EIIL's manufacturing, R&D, supply chain, procurement, commercial, HR, enterprise systems and distribution operations.",
-            "Assess privacy, information security and regulatory risks across EIIL's manufacturing, quality, logistics, commercial, enterprise and SaaS platforms, including analytics environments, physical repositories and third‑party networks such as distributors, retailers, logistics partners and service vendors.",
-            "Evaluate governance structures, policies and controls covering lawful purpose, consent (where applicable), retention, erasure, grievance handling, DPR workflows, cross‑border transfers and personal data breach processes.",
-            "Design and operationalize a scalable privacy governance and risk framework, defining roles, accountability, escalation paths and procedures for DPIAs and risk‑based reviews of new systems, digital initiatives and operational programs.",
-            "Support rollout of updated privacy policies, notices and procedures for consent, DPR, retention/deletion, breach response and DPIA processes, tailored for corporate, manufacturing, R&D, commercial and customer‑facing teams.",
-            "Coordinate remediation across key platforms to strengthen consent workflows, DPR handling, third‑party data sharing controls, data minimization and privacy‑by‑design requirements with support from selected tooling partners.",
-            "Deliver role‑based privacy training, define governance KPIs and RACI structures and enable reporting and dashboards to support continuous oversight, audit readiness, regulatory preparedness and executive visibility.",
-        ])
+        s.update(label="✅ All AI content generated", state="complete")
+
+    # Step 4 – build PPTX
+    with st.status("📝 Building PPTX…", expanded=False) as s:
         try:
-            raw_bullets = groq_call(
-                client,
-                SLIDE4_BULLETS_PROMPT.format(context=context, bullets=orig_bullets),
-                max_tokens=1800,
-            )
-            ai["slide4_bullets"] = [l.strip() for l in raw_bullets.split("\n") if l.strip()]
+            output = build_presentation(pptx_bytes, company_name, company_short, info, ai)
+            s.update(label="✅ PPTX ready!", state="complete")
         except Exception as e:
-            ai["slide4_bullets"] = []
-            st.warning(f"Slide 4 bullets: {e}")
-
-        # Slide 11
-        st.write("Slide 11 – Privacy Operating Model paragraph...")
-        try:
-            ai["slide11_para"] = groq_call(
-                client, SLIDE11_PROMPT.format(context=context))
-        except Exception as e:
-            ai["slide11_para"] = f"For this engagement, the privacy compliance model will be applied exclusively to the internal functions, processes and governance structures of {company_name}, supporting its {', '.join(info['core_business_lines'][:2])} operations and corporate functions."
-            st.warning(f"Slide 11: {e}")
-
-        # Slide 17
-        st.write("Slide 17 – Data Lifecycle (6 sections)...")
-        try:
-            raw17 = groq_call(
-                client, SLIDE17_PROMPT.format(context=context), max_tokens=2500)
-            raw17 = re.sub(r"^```(?:json)?", "", raw17).strip()
-            raw17 = re.sub(r"```$", "", raw17).strip()
-            ai["slide17_lifecycle"] = json.loads(raw17)
-        except Exception as e:
-            ai["slide17_lifecycle"] = {}
-            st.warning(f"Slide 17: {e}")
-
-        status.update(label="✅ All AI content generated", state="complete")
-
-    # ── Step 4: Modify PPTX ───────────────────────────────────
-    with st.status("📝 Applying changes to PPTX...", expanded=False) as status:
-        try:
-            output_bytes = build_presentation(pptx_bytes, company_name, company_short, info, ai)
-            status.update(label="✅ PPTX ready!", state="complete")
-        except Exception as e:
-            status.update(label="❌ PPTX modification failed", state="error")
-            st.error(f"Error: {e}")
+            s.update(label="❌ Failed", state="error")
+            st.error(str(e))
             import traceback; st.code(traceback.format_exc())
             st.stop()
 
-    st.success("🎉 Proposal generated successfully!")
+    st.success("🎉 Proposal generated!")
 
-    # Preview AI content
-    with st.expander("🔍 Preview AI-generated content"):
-        with col2:
-            st.subheader("🤖 AI-Generated Paragraphs")
-        st.markdown("**Slide 4 – Company Description:**")
-        st.info(ai.get("slide4_desc",""))
-        st.markdown("**Slide 4 – Scope Paragraph:**")
-        st.info(ai.get("slide4_scope",""))
-        if ai.get("slide4_bullets"):
-            st.markdown("**Slide 4 – Scope Bullets:**")
-            for b in ai["slide4_bullets"]:
-                st.write(f"• {b}")
-        st.markdown("**Slide 11 – Operating Model Paragraph:**")
-        st.info(ai.get("slide11_para",""))
-        if ai.get("slide17_lifecycle"):
+    with st.expander("🔍 Preview AI content"):
+        st.markdown("**Slide 4 – Company Description:**"); st.info(ai.get("s4_desc",""))
+        st.markdown("**Slide 4 – Scope Paragraph:**");     st.info(ai.get("s4_scope",""))
+        if ai.get("s4_bullets"):
+            st.markdown("**Slide 4 – Bullets:**")
+            for b in ai["s4_bullets"]: st.write(f"• {b}")
+        st.markdown("**Slide 11 – Operating Model:**");    st.info(ai.get("s11",""))
+        if ai.get("s17_lifecycle"):
             st.markdown("**Slide 17 – Data Lifecycle:**")
-            for k, v in ai["slide17_lifecycle"].items():
-                st.markdown(f"*{k.replace('_',' ').title()}:* {v}")
+            for k, v in ai["s17_lifecycle"].items():
+                st.write(f"**{k.replace('_',' ').title()}:** {v}")
 
-    # Download
-    safe = re.sub(r"[^\w\s-]","", company_name).strip().replace(" ","_")[:40]
-    filename = f"Proposal_Data_Privacy_{safe}_March2026.pptx"
-    st.download_button(
-        label="⬇️ Download Personalised Proposal",
-        data=output_bytes,
-        file_name=filename,
-        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        use_container_width=True,
-        type="primary",
-    )
-    st.caption(
-        "ℹ️ Sections where the questionnaire had no data, or where AI could not confidently "
-        "generate content, are left unchanged from the template for human review."
-    )
+    safe  = re.sub(r"[^\w\s-]","", company_name).strip().replace(" ","_")[:40]
+    fname = f"Proposal_Data_Privacy_{safe}_March2026.pptx"
+    st.download_button("⬇️ Download Personalised Proposal",
+                       output, fname,
+                       "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                       use_container_width=True, type="primary")
+    st.caption("ℹ️ Fields without sufficient data are left as in the template for human review.")
 
 else:
-    st.info("👈 Fill in all details in the sidebar and upload both files, then click **Generate Proposal**.")
+    st.info("👈 Fill in all details in the sidebar, upload both files, then click **Generate Proposal**.")
     with st.expander("📖 How it works"):
         st.markdown("""
-**Two inputs drive the output:**
-
-1. **Template PPTX** — the master proposal file (Eveready template)
-2. **Pre-Scoping Questionnaire (.docx)** — filled in for the new company
-
-**What changes per slide:**
-
-| Slide | What changes | Source |
+| Slide | Change | Source |
 |---|---|---|
-| 1 | Company name | Manual input |
-| 4 | Company description + scope paragraphs + bullets | AI (Groq) |
-| 5 | Employee count, hosting, apps, departments, data subjects | Questionnaire |
-| 11 | Privacy Operating Model paragraph | AI (Groq) |
-| 12 | EIIL name references in bullets | Auto-replace |
-| 14 | EIIL name references in Phase I | Auto-replace |
-| 17 | All 6 Data Lifecycle sections | AI (Groq) |
-| 19 | EIIL name references in Phase II | Auto-replace |
+| **1** | Company name | Input |
+| **4** | Company description + scope + bullets | AI (Groq, word-limited) |
+| **5** | **Full professional redesign** — employee count, hosting, apps, departments, data types & subjects | Questionnaire |
+| **11** | Operating model paragraph | AI |
+| **12, 14, 19** | Name auto-replace | Auto |
+| **17** | All 6 Data Lifecycle sections | AI |
 
-**Everything else** — all visuals, colours, charts, team bios, methodology diagrams, fees, Protiviti info — stays exactly as in the template.
-        """)
+All design, colours, fonts, charts, team slides and Protiviti content remain untouched.
+""")
