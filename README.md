@@ -1,97 +1,78 @@
-# 📊 AI-Powered Proposal Generator
+# 📊 AI Proposal Generator — Protiviti DPDPA Privacy Proposal
 
-A Streamlit app that personalises a data-privacy consulting proposal template (`.pptx`) for any new company — using **Groq AI (LLaMA 3.3 70B)** to research the company and replace all company-specific content while keeping the entire template design intact.
+Personalises a data-privacy consulting proposal (`.pptx`) for any new company using:
+- A **filled Pre-Scoping Questionnaire** (`.docx`) for factual company data
+- **Groq AI (LLaMA 3.3 70B)** for company-specific paragraphs
+- Simple find-and-replace for name/date references everywhere else
+
+Design, layout, fonts, colours and all non-company content remain 100% intact.
 
 ---
 
-## ✨ Features
+## 🗺️ Slide-by-Slide Changes
 
-| Feature | Detail |
-|---|---|
-| Upload any `.pptx` template | Works with the Eveready-style DPDPA proposal template |
-| Website scraping | Auto-fetches company info from their homepage |
-| Groq AI research | Generates company description, scope, departments, data types etc. |
-| Smart PPTX editing | Replaces text **run-by-run**, preserving all fonts, colours & formatting |
-| Safe fallback | Sections with insufficient info are left unchanged for human review |
-| One-click download | Personalised `.pptx` ready to open in PowerPoint |
+| Slide | What changes | How |
+|---|---|---|
+| **1** | Company name in title | Auto-replace |
+| **4** | Company description, scope paragraph, 7 scope bullets | Groq AI |
+| **5** | Employee count, hosting model, applications, departments, data subjects | Questionnaire |
+| **11** | Privacy Operating Model paragraph | Groq AI |
+| **12** | All EIIL name references in bullets | Auto-replace |
+| **14** | All EIIL name references in Phase I | Auto-replace |
+| **17** | All 6 Data Lifecycle sections (Collection → Disposal) | Groq AI |
+| **19** | All EIIL name references in Phase II | Auto-replace |
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Clone the repo
 ```bash
 git clone https://github.com/YOUR_USERNAME/ai-proposal-generator.git
 cd ai-proposal-generator
-```
-
-### 2. Install dependencies
-```bash
 pip install -r requirements.txt
-```
-
-### 3. Run the app
-```bash
 streamlit run app.py
 ```
 
-### 4. Open in browser
-Navigate to `http://localhost:8501`
+Open `http://localhost:8501`
+
+---
+
+## 📝 Pre-Scoping Questionnaire Format
+
+The app parses the standard Protiviti Pre-Scoping Privacy Questionnaire (`.docx`).  
+It reads five sections automatically:
+
+| Section | Fields extracted |
+|---|---|
+| Organisational Overview | Employee count, subsidiaries |
+| Governance & Accountability | Policy framework status |
+| Business Lines & Stakeholders | Core business lines, departments |
+| Data Ecosystem | Applications, interfaces, hosting |
+| Data Subjects & Data Types | Data subject categories, data types |
 
 ---
 
 ## 🔑 Groq API Key
 
-Get a free key at [console.groq.com](https://console.groq.com).  
-Enter it in the sidebar when running the app (never stored or logged).
+Free key at [console.groq.com](https://console.groq.com).  
+Enter in sidebar — never stored.
 
 ---
 
-## 📁 What Gets Changed
+## ☁️ Deploy to Streamlit Cloud
 
-| Slide | What changes |
-|---|---|
-| **Slide 1** | Company name + title |
-| **Slide 4** – Our Understanding | Full company description paragraph |
-| **Slide 5** – Scope of Review | Employee count, departments, apps, interfaces |
-| **All slides** | Every occurrence of the old company name / abbreviation |
-
-All other slides (methodology, timeline, fees, team, About Protiviti) remain **exactly as in the template**.
-
----
-
-## 🗂 Project Structure
-
-```
-ai-proposal-generator/
-├── app.py               # Main Streamlit application
-├── requirements.txt     # Python dependencies
-└── README.md            # This file
-```
-
----
-
-## ⚙️ Deploying to Streamlit Cloud
-
-1. Push this repo to GitHub  
-2. Go to [share.streamlit.io](https://share.streamlit.io) → **New app**  
-3. Select your repo, branch `main`, file `app.py`  
-4. Add `GROQ_API_KEY` as a **secret** if you want to pre-fill it  
-5. Click **Deploy**
-
----
-
-## 📝 Notes
-
-- The app does **not** change any images, shapes, colours, or layouts — only text.  
-- If the AI cannot confidently fill a field (e.g., exact employee count), it leaves the original template text so a human can update it.  
-- Works best when the company has a descriptive homepage.
+1. Push repo to GitHub  
+2. [share.streamlit.io](https://share.streamlit.io) → New app → select `app.py`  
+3. Add secret `GROQ_API_KEY` if you want to pre-fill the key  
 
 ---
 
 ## 🛠 Tech Stack
 
-- [Streamlit](https://streamlit.io) — UI  
-- [python-pptx](https://python-pptx.readthedocs.io) — PPTX manipulation  
-- [Groq](https://console.groq.com) — LLM API (LLaMA 3.3 70B)  
-- [BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/) — website scraping  
+| Library | Purpose |
+|---|---|
+| `streamlit` | UI |
+| `python-pptx` | PPTX text replacement (run-level, preserves formatting) |
+| `python-docx` | Parse questionnaire tables |
+| `groq` | LLaMA 3.3 70B for AI paragraphs |
+| `beautifulsoup4` | Website scraping for extra context |
