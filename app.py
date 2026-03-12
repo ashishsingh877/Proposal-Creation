@@ -119,20 +119,22 @@ Website content: {website_text}
 Return ONLY the single sentence. No labels.
 """
 
-# ── Slide 4: Full company description paragraph ──────────────
-# Exactly matches the Eveready original: 3 sentences, 124 words, fills the full-width box
+# ── Slide 4: Company description BODY ONLY (TextBox 8 R1 — non-bold) ────────
+# The company name is in R0 (bold). R1 gets only the body starting "is a leading..."
+# So the AI must NOT include the company name — start directly with "is a leading..."
 P_DESC = """
-You are writing a professional consulting proposal. Rewrite the paragraph below for a NEW company.
+You are writing a professional consulting proposal. Rewrite the paragraph body below for a NEW company.
 
 CRITICAL RULES:
-1. EXACTLY 3 sentences — no more, no less
-2. EXACTLY 120–128 words total — count carefully
-3. Keep the EXACT grammatical skeleton of each sentence; only swap company-specific nouns/phrases
-4. Use the business model info provided — do NOT guess or contradict it
-5. All 3 required content elements MUST appear (one per sentence):
-   - Sentence 1: Company type + full list of product/service segments + markets served
-   - Sentence 2: EXACT business model ({business_model}) + who they serve + specific channels/networks + B2C touchpoints
-   - Sentence 3: Core operational capabilities + specific technology/systems used + value proposition closing statement
+1. Start DIRECTLY with "is a leading" — do NOT include the company name (it is placed separately)
+2. EXACTLY 3 sentences — no more, no less
+3. EXACTLY 118–124 words total — count carefully
+4. Keep the EXACT grammatical skeleton; only swap company-specific nouns/phrases
+5. Use the business model info provided — do NOT guess or contradict it
+6. Content per sentence:
+   - Sentence 1: "is a leading [type] manufacturer..." + full product/service segments + markets
+   - Sentence 2: EXACT business model ({business_model}) + who they serve + channels + B2C touchpoints
+   - Sentence 3: Core capabilities + technology/systems + value proposition closing
 
 TARGET COMPANY:
 Name: {company_name}
@@ -140,39 +142,47 @@ Short name: {company_short}
 Business model: {business_model}
 Website content: {website_text}
 
-ORIGINAL PARAGRAPH to rewrite (124 words — match this length):
-Eveready Industries India Ltd. (EIIL) is a leading Indian manufacturer of portable energy and \
-lighting solutions, operating through a diversified multi-segment model spanning dry-cell batteries, \
-flashlights, consumer lighting, professional lighting and electrical accessories across domestic and \
-select international markets. The company follows a predominantly B2B and B2B2C-driven model, serving \
-distributors, retailers, institutional buyers and large-scale channel partners through one of India's \
-widest FMCG-style distribution networks, while maintaining limited B2C interfaces through brand \
-engagement, after-sales support and product service programs. EIIL enables end-to-end product \
-development, high-volume manufacturing, nationwide distribution and lifecycle management through \
-technology-driven quality systems, DSIR-approved R&D capabilities, integrated manufacturing \
-facilities and data-enabled supply-chain operations, ensuring safe, reliable, compliant and \
-cost-efficient delivery of portable power and lighting solutions across diverse consumer and \
-commercial segments.
+ORIGINAL BODY to rewrite (starts after company name — 121 words):
+is a leading Indian manufacturer of portable energy and lighting solutions, operating through a \
+diversified multi-segment model spanning dry-cell batteries, flashlights, consumer lighting, \
+professional lighting and electrical accessories across domestic and select international markets. \
+The company follows a predominantly B2B and B2B2C-driven model, serving distributors, retailers, \
+institutional buyers and large-scale channel partners through one of India's widest FMCG-style \
+distribution networks, while maintaining limited B2C interfaces through brand engagement, after-sales \
+support and product service programs. EIIL enables end-to-end product development, high-volume \
+manufacturing, nationwide distribution and lifecycle management through technology-driven quality \
+systems, DSIR-approved R&D capabilities, integrated manufacturing facilities and data-enabled \
+supply-chain operations, ensuring safe, reliable, compliant and cost-efficient delivery of portable \
+power and lighting solutions across diverse consumer and commercial segments.
 
-Return ONLY the rewritten paragraph. NO labels, NO quotes, NO extra lines. 120–128 words exactly.
+Return ONLY the rewritten body. Start with "is a leading". NO company name, NO labels, NO quotes.
 """
 
-# ── Slide 4: Scope paragraph ────────────────────────────────
-P_SCOPE = """
-Rewrite the sentence below for the target company.
-Replace "lending, leasing and factoring operations" with the company's actual business operations.
-Keep ALL DPDPA/privacy language word-for-word. Max 50 words.
+# ── Slide 4: Scope — OPERATIONS PHRASE ONLY (TextBox 3 P0 R3) ───────────────
+# The full scope sentence structure is fixed in the template:
+# R0(bold)=[CompanyShort] R1="seeks support...the " R2(bold)="Digital Personal Data Protection Act, 2023"
+# R3=" and applicable Rules, calibrated to its people, process and technology landscape across [OPS]."
+# We ONLY update the [OPS] part — everything else stays exactly as-is.
+P_SCOPE_OPS = """
+Complete the phrase below for the target company. Replace the bracketed part ONLY.
+
+TEMPLATE (fill in [OPS] only):
+"and applicable Rules, calibrated to its people, process and technology landscape across [OPS]."
+
+Rules:
+- [OPS] = a SHORT phrase (5–10 words) describing the company's core business operations
+- Examples: "pharmaceutical glass packaging and distribution operations"
+             "retail banking, insurance and digital financial services operations"
+             "specialty chemicals manufacturing, R&D and export operations"
+- Do NOT change any other word in the template sentence
+- Return ONLY the complete sentence starting with "and applicable Rules..."
 
 TARGET COMPANY:
-Name: {company_name}, Short: {company_short}
-Business context: {website_text}
+Name: {company_name}
+Short: {company_short}
+Context: {website_text}
 
-ORIGINAL:
-EIIL seeks support to establish a robust, end-to-end data privacy and personal data protection \
-program aligned with the Digital Personal Data Protection Act, 2023 and applicable Rules, \
-calibrated to its people, process and technology landscape across lending, leasing and factoring operations.
-
-Return ONLY the rewritten sentence.
+Return ONLY the completed sentence. No labels, no quotes.
 """
 
 # ── Slide 4: 7 scope bullets ────────────────────────────────
@@ -199,16 +209,15 @@ Return exactly 7 lines. No numbering, no bullet symbols, no extra text.
 """
 
 # ── Slide 4: Right-side "How We Will Help" box (TextBox 12) ──
-# Original structure:  intro para (24w)  +  6 bullets (28,22,16,25,25,30w each)
-# The heading "Roadmap for Compliance and Implementation" is never changed.
-# Only the intro paragraph and the 6 bullets are rewritten for the new company.
+# P0=heading (never touch), P1=intro (NEVER touch — it's generic, 24w, perfect as-is),
+# P2–P7 = 6 bullets rewritten for the new company.
 P_S4_RIGHT = """
-You are rewriting content in the "How We Will Help" section of a consulting proposal for \
+You are rewriting bullet points in the "How We Will Help" section of a consulting proposal for \
 a data-privacy engagement under India's DPDPA.
 
-Rewrite the intro paragraph and all 6 bullet points below for the TARGET COMPANY.
+Rewrite all 6 bullet points below for the TARGET COMPANY.
 Rules:
-- Replace "EIIL" / "Eveready" with the new company name / short name everywhere
+- Replace "EIIL" / "Eveready" with the new company short name everywhere
 - Replace all industry-specific terms with accurate equivalents for the new company
 - Keep ALL DPDPA/privacy/governance methodology language EXACTLY as-is
 - Match the EXACT word count shown in brackets for every item — these are fixed-size text boxes
@@ -220,16 +229,12 @@ Short name: {company_short}
 Business model: {business_model}
 Business context: {website_text}
 
-Return a JSON object with EXACTLY these 7 keys:
-"intro", "b1", "b2", "b3", "b4", "b5", "b6"
+Return a JSON object with EXACTLY these 6 keys:
+"b1", "b2", "b3", "b4", "b5", "b6"
 Values = text only. NO section numbers, NO bullet symbols.
 Return ONLY valid JSON. No markdown fences.
 
 ORIGINALS with EXACT word counts to match:
-
-intro [EXACTLY 24 words]:
-We help embed a trust-first approach to personal data practices, strengthening transparency, \
-accountability and regulatory alignment to enable sustainable compliance DPDPA and it's Rules.
 
 b1 [EXACTLY 28 words]:
 Enable EIIL's transition to sustained compliance with the Digital Personal Data Protection Act \
@@ -365,18 +370,16 @@ internal EIIL data‑governance guidelines to ensure safe and compliant handling
 # PPTX HELPERS
 # ─────────────────────────────────────────────────────────────
 def _rep_para(para, rep: dict):
-    """Replace text across all runs of a paragraph preserving run[0] formatting."""
-    full = "".join(r.text for r in para.runs)
-    if not any(k in full for k in rep if k):
-        return
-    new = full
-    for k, v in rep.items():
-        if k and v is not None:
-            new = new.replace(k, v)
-    if new != full and para.runs:
-        para.runs[0].text = new
-        for r in para.runs[1:]:
-            r.text = ""
+    """Replace text in each run individually — preserves bold/italic/colour per run.
+    Previously this crushed all runs into run[0] which made everything bold.
+    Now each run is updated in-place so formatting is never disturbed."""
+    for run in para.runs:
+        t = run.text
+        for k, v in rep.items():
+            if k and v is not None and k in t:
+                t = t.replace(k, v)
+        if t != run.text:
+            run.text = t
 
 
 def _rep_shape(shape, rep: dict):
@@ -505,13 +508,45 @@ def build_presentation(pptx_bytes: bytes, company_name: str,
     if len(prs.slides) > 3:
         s4 = prs.slides[3]
 
-        # Company description paragraph (TextBox 8)
-        set_para_text(s4, "TextBox 8", "leading", ai["s4_desc"])
+        # ── TextBox 8: Top company description ───────────────
+        # Run structure: R0(bold)=company name, R1(normal)=body
+        # Global replace already updated R0 (EIIL→company_name).
+        # Write AI body to R1 ONLY — never touch R0 (preserves bold on name only).
+        if ai.get("s4_desc"):
+            for shape in s4.shapes:
+                if shape.name != "TextBox 8": continue
+                runs = shape.text_frame.paragraphs[0].runs
+                if len(runs) >= 2:
+                    runs[1].text = ai["s4_desc"]
+                    for r in runs[2:]: r.text = ""
+                break
 
-        # Scope paragraph – first para of TextBox 3
-        set_para_text(s4, "TextBox 3", "seeks support", ai["s4_scope"])
+        # ── TextBox 3 P0: Scope paragraph ────────────────────
+        # Run structure: R0(bold)=company short, R1(normal)=fixed DPDPA text,
+        #                R2(bold)=fixed "Digital Personal Data Protection Act, 2023",
+        #                R3(normal)=" and applicable Rules...landscape across [OPS]."
+        # Global replace already updated R0 (EIIL→company_short).
+        # ONLY update R3 with AI operations phrase — R1 and R2 stay exactly as-is.
+        if ai.get("s4_ops"):
+            for shape in s4.shapes:
+                if shape.name != "TextBox 3": continue
+                runs = shape.text_frame.paragraphs[0].runs
+                if len(runs) >= 4:
+                    ops_text = ai["s4_ops"].strip()
+                    # Ensure it starts with " and applicable Rules..."
+                    if not ops_text.lower().startswith("and "):
+                        ops_text = "and applicable Rules, calibrated to its people, process and technology landscape across " + ops_text
+                    # Prepend space (R3 starts with a space in original)
+                    if not ops_text.startswith(" "):
+                        ops_text = " " + ops_text
+                    # Ensure ends with period
+                    if not ops_text.rstrip().endswith("."):
+                        ops_text = ops_text.rstrip() + "."
+                    runs[3].text = ops_text
+                    for r in runs[4:]: r.text = ""
+                break
 
-        # Scope bullets – 7 paragraphs in TextBox 3
+        # ── TextBox 3 P2–P8: Scope bullets ───────────────────
         bullet_frags = [
             "Conduct an enterprise",
             "Assess privacy, information security",
@@ -525,25 +560,18 @@ def build_presentation(pptx_bytes: bytes, company_name: str,
             if new_b:
                 set_para_text(s4, "TextBox 3", frag, new_b)
 
-        # Fix right-side bullets — insert BEFORE defRPr so OOXML order is valid
+        # ── TextBox 12: Fix bullets then write AI text ────────
+        # P1 (intro) is NEVER rewritten — it's generic and already perfect:
+        # "We help embed a trust-first approach...DPDPA and it's Rules."
+        # P0=heading (skip), P1=intro (skip), P2–P7=6 bullets (AI)
         fix_slide4_bullets(s4)
 
-        # Right-side "How We Will Help" box (TextBox 12) — AI rewrite by PARAGRAPH INDEX
-        # Index map: P0=heading(skip), P1=intro, P2..P7=6 bullets
-        # Using index avoids fragment-match failures caused by prior global name replacement
         s4r = ai.get("s4_right", {})
         if s4r:
             for shape in s4.shapes:
-                if shape.name != "TextBox 12":
-                    continue
-                paras = shape.text_frame.paragraphs
-                # P1 — intro paragraph
-                if s4r.get("intro") and len(paras) > 1:
-                    p = paras[1]
-                    if p.runs:
-                        p.runs[0].text = s4r["intro"]
-                        for r in p.runs[1:]: r.text = ""
-                # P2..P7 — 6 bullets
+                if shape.name != "TextBox 12": continue
+                paras = list(shape.text_frame.paragraphs)
+                # P2..P7 — 6 bullets only (P0 and P1 are never touched)
                 for i, key in enumerate(["b1","b2","b3","b4","b5","b6"], start=2):
                     if s4r.get(key) and len(paras) > i:
                         p = paras[i]
@@ -632,7 +660,7 @@ if generate_btn:
             biz_model = f"Predominantly B2B, serving enterprise clients through direct and dealer channels"
         ai["biz_model"] = biz_model
 
-        st.write("📝 Slide 4 — Company description paragraph…")
+        st.write("📝 Slide 4 — Company description body…")
         safe("s4_desc",
              P_DESC.format(company_name=company_name,
                            company_short=company_short,
@@ -640,26 +668,32 @@ if generate_btn:
                            website_text=web[:2500]),
              max_tok=500,
              fallback=(
-                 f"{company_name} is a leading company in its industry, operating through a "
-                 f"diversified multi-segment model spanning its core products and services across "
-                 f"domestic and select international markets. {biz_model.rstrip('.')}. "
+                 f"is a leading company in its industry, operating through a diversified "
+                 f"multi-segment model spanning its core products and services across domestic "
+                 f"and select international markets. {biz_model.rstrip('.')}. "
                  f"{company_short} enables end-to-end service delivery through technology-driven "
                  f"quality systems and integrated operations, ensuring safe, reliable, compliant "
                  f"and cost-efficient delivery across diverse market segments."
              ))
-        # Hard trim to 128 words — TextBox 8 is 13.03" wide, original is 124 words
+        # Ensure body starts correctly and trim to 124 words (R1 box capacity)
         if ai.get("s4_desc"):
-            words = ai["s4_desc"].split()
-            if len(words) > 128:
-                ai["s4_desc"] = " ".join(words[:128])
+            body = ai["s4_desc"].strip()
+            # Strip any company name the AI accidentally prepended
+            for prefix in [company_name, company_short]:
+                if body.lower().startswith(prefix.lower()):
+                    body = body[len(prefix):].lstrip(" ,")
+            # Ensure starts with "is a"
+            if not body.lower().startswith("is "):
+                body = "is " + body
+            ai["s4_desc"] = " ".join(body.split()[:124])
 
-        st.write("📝 Slide 4 — Scope paragraph…")
-        safe("s4_scope",
-             P_SCOPE.format(company_name=company_name,
-                            company_short=company_short,
-                            website_text=web[:1500]),
-             max_tok=150,
-             fallback=f"{company_short} seeks support to establish a robust, end-to-end data privacy and personal data protection program aligned with the Digital Personal Data Protection Act, 2023 and applicable Rules, calibrated to its people, process and technology landscape.")
+        st.write("📝 Slide 4 — Scope operations phrase…")
+        safe("s4_ops",
+             P_SCOPE_OPS.format(company_name=company_name,
+                                company_short=company_short,
+                                website_text=web[:1500]),
+             max_tok=80,
+             fallback=f"and applicable Rules, calibrated to its people, process and technology landscape across {company_short}'s core business operations.")
 
         st.write("📝 Slide 4 — Scope bullets (7)…")
         try:
@@ -676,15 +710,15 @@ if generate_btn:
             ai["s4_bullets"] = []
             st.warning(f"s4_bullets: {e}")
 
-        st.write("📝 Slide 4 — Right-side 'How We Will Help' box…")
-        S4R_LIMITS = {"intro":24, "b1":28, "b2":22, "b3":16, "b4":25, "b5":25, "b6":30}
+        st.write("📝 Slide 4 — Right-side 'How We Will Help' bullets…")
+        S4R_LIMITS = {"b1":28, "b2":22, "b3":16, "b4":25, "b5":25, "b6":30}
         try:
             raw_r = groq_call(client,
                               P_S4_RIGHT.format(company_name=company_name,
                                                 company_short=company_short,
                                                 business_model=biz_model,
                                                 website_text=web[:2000]),
-                              max_tokens=900)
+                              max_tokens=800)
             raw_r = re.sub(r"^```(?:json)?", "", raw_r).strip()
             raw_r = re.sub(r"```$",          "", raw_r).strip()
             s4r = json.loads(raw_r)
