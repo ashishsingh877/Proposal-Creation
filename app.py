@@ -30,38 +30,27 @@ from groq import Groq
 # ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="AI Proposal Generator", page_icon="📊", layout="wide")
 
-# ── Hide toolbar actions, footer, and Manage app bubble ──
+# ── Only hide the "Manage app" bubble — keep sidebar toggle intact ──
 st.markdown("""
 <style>
-/* Correct selector for the "Manage app" bubble — mobile and desktop */
-[data-testid="stStatusWidget"]   { display: none !important; visibility: hidden !important; }
-[data-testid="stToolbarActions"] { display: none !important; }
-#MainMenu                        { display: none !important; }
-footer                           { display: none !important; }
-.block-container                 { padding-top: 1.5rem !important; }
+[data-testid="stStatusWidget"]          { display: none !important; }
+[data-testid="stMainMenuPopover"]        { display: none !important; }
+footer                                   { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── JS backup via iframe → parent document (catches mobile React renders) ──
 components.html("""
 <script>
 (function() {
     function kill() {
         var doc = window.parent.document;
-        [
-            '[data-testid="stStatusWidget"]',
-            '[data-testid="stToolbarActions"]',
-            '[data-testid="stDeployButton"]'
-        ].forEach(function(sel) {
-            doc.querySelectorAll(sel).forEach(function(el) {
-                el.style.cssText += 'display:none!important;visibility:hidden!important';
-            });
-        });
+        var el = doc.querySelector('[data-testid="stStatusWidget"]');
+        if (el) el.style.cssText += 'display:none!important';
     }
     kill();
     var obs = new MutationObserver(kill);
     obs.observe(window.parent.document.body, { childList: true, subtree: true });
-    [200, 500, 1000, 2000, 4000].forEach(function(t) { setTimeout(kill, t); });
+    [500, 1500, 3000].forEach(function(t) { setTimeout(kill, t); });
 })();
 </script>
 """, height=0)
