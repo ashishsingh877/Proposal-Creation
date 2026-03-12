@@ -1,5 +1,9 @@
 [client]
-toolbarMode = "minimal"
+toolbarMode = "viewer"
+showErrorDetails = false
 
 [browser]
 gatherUsageStats = false
+
+[runner]
+fastReruns = true
