@@ -767,16 +767,16 @@ if generate_btn:
             st.warning(f"Profile extraction: {e}")
 
         # Safe accessors with sensible fallbacks
-        industry    = profile.get("industry",    "business services")
-        biz_model   = profile.get("business_model",
-                                  f"Predominantly B2B, serving enterprise clients through direct channels")
-        svc_lines   = profile.get("service_lines",  company_short + "'s core service lines")
-        key_sectors = profile.get("key_sectors",    "enterprise clients across multiple sectors")
-        key_funcs   = profile.get("key_functions",  "Operations, Finance, HR, IT, Compliance, Client Delivery")
-        key_systems = profile.get("key_systems",    "ERP, CRM, cloud platforms and analytics tools")
-        data_types  = profile.get("data_types",     "employee data, client data, operational data")
-        partner_types = profile.get("partner_types","clients, vendors, sub-contractors, regulators")
+        industry      = profile.get("industry",             "business services")
+        biz_model     = profile.get("business_model",       f"Predominantly B2B, serving enterprise clients through direct channels")
+        svc_lines     = profile.get("service_lines",        company_short + "'s core service lines")
+        key_sectors   = profile.get("key_sectors",          "enterprise clients across multiple sectors")
+        key_funcs     = profile.get("key_functions",        "Operations, Finance, HR, IT, Compliance, Client Delivery")
+        key_systems   = profile.get("key_systems",          "ERP, CRM, cloud platforms and analytics tools")
+        data_types    = profile.get("data_types",           "employee data, client data, operational data")
+        partner_types = profile.get("partner_types",        "clients, vendors, sub-contractors, regulators")
         geo_footprint = profile.get("geographic_footprint", "pan-India with global operations")
+        channel_desc  = profile.get("channel_description",  "direct B2B sales and partner channels")
         ai["biz_model"] = biz_model
         ai["profile"]   = profile
 
@@ -789,7 +789,8 @@ if generate_btn:
                            service_lines=svc_lines,
                            key_sectors=key_sectors,
                            key_systems=key_systems,
-                           geographic_footprint=geo_footprint),
+                           geographic_footprint=geo_footprint,
+                           channel_description=channel_desc),
              max_tok=500,
              fallback=(
                  f"is a leading {industry} company, operating through a diversified model "
@@ -867,7 +868,8 @@ if generate_btn:
                           business_model=biz_model,
                           service_lines=svc_lines,
                           key_functions=key_funcs,
-                          geographic_footprint=geo_footprint),
+                          geographic_footprint=geo_footprint,
+                          channel_description=channel_desc),
              max_tok=250,
              fallback=(
                  f"For this engagement, the privacy compliance model will be applied exclusively "
