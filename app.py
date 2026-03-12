@@ -198,6 +198,67 @@ Deliver role-based privacy training, define governance KPIs and RACI structures 
 Return exactly 7 lines. No numbering, no bullet symbols, no extra text.
 """
 
+# ── Slide 4: Right-side "How We Will Help" box (TextBox 12) ──
+# Original structure:  intro para (24w)  +  6 bullets (28,22,16,25,25,30w each)
+# The heading "Roadmap for Compliance and Implementation" is never changed.
+# Only the intro paragraph and the 6 bullets are rewritten for the new company.
+P_S4_RIGHT = """
+You are rewriting content in the "How We Will Help" section of a consulting proposal for \
+a data-privacy engagement under India's DPDPA.
+
+Rewrite the intro paragraph and all 6 bullet points below for the TARGET COMPANY.
+Rules:
+- Replace "EIIL" / "Eveready" with the new company name / short name everywhere
+- Replace all industry-specific terms with accurate equivalents for the new company
+- Keep ALL DPDPA/privacy/governance methodology language EXACTLY as-is
+- Match the EXACT word count shown in brackets for every item — these are fixed-size text boxes
+- Same formal consulting tone — specific, not generic
+
+TARGET COMPANY:
+Name: {company_name}
+Short name: {company_short}
+Business model: {business_model}
+Business context: {website_text}
+
+Return a JSON object with EXACTLY these 7 keys:
+"intro", "b1", "b2", "b3", "b4", "b5", "b6"
+Values = text only. NO section numbers, NO bullet symbols.
+Return ONLY valid JSON. No markdown fences.
+
+ORIGINALS with EXACT word counts to match:
+
+intro [EXACTLY 24 words]:
+We help embed a trust-first approach to personal data practices, strengthening transparency, \
+accountability and regulatory alignment to enable sustainable compliance DPDPA and it's Rules.
+
+b1 [EXACTLY 28 words]:
+Enable EIIL's transition to sustained compliance with the Digital Personal Data Protection Act \
+by translating regulatory requirements into a risk-calibrated privacy and governance framework \
+aligned to business priorities.
+
+b2 [EXACTLY 22 words]:
+Define a risk led, high level compliance roadmap addressing material privacy, data protection \
+and operational gaps across EIIL's personal data processing landscape.
+
+b3 [EXACTLY 16 words]:
+Establish prioritized remediation themes, sequencing logic and clear accountability structures \
+to support effective and scalable compliance.
+
+b4 [EXACTLY 25 words]:
+Strengthen privacy governance and control architecture by embedding oversight, decision making \
+and process rigor in line with privacy by design and privacy by default principles.
+
+b5 [EXACTLY 25 words]:
+Consolidate key observations and the compliance roadmap into formal deliverables to support \
+executive oversight, audit readiness and regulatory preparedness, while enhancing stakeholder \
+trust and transparency.
+
+b6 [EXACTLY 30 words]:
+Deliver a risk prioritized remediation roadmap and support governance enablement through a \
+Privacy Steering Committee, defined KPIs, RACI structures and PMO aligned reporting to \
+facilitate coordinated implementation and sustained compliance.
+"""
+
 # ── Slide 11: Operating model paragraph ─────────────────────
 P_S11 = """
 You are rewriting one paragraph for a professional consulting proposal slide.
@@ -459,8 +520,27 @@ def build_presentation(pptx_bytes: bytes, company_name: str,
             if new_b:
                 set_para_text(s4, "TextBox 3", frag, new_b)
 
-        # Fix right-side bullets from Wingdings § → Arial •
+        # Fix right-side bullets from Wingdings § → Arial •  (must run before text write)
         fix_slide4_bullets(s4)
+
+        # Right-side "How We Will Help" box (TextBox 12) — AI rewrite
+        s4r = ai.get("s4_right", {})
+        if s4r:
+            # intro paragraph (P1 — the non-bullet intro after the heading)
+            if s4r.get("intro"):
+                set_para_text(s4, "TextBox 12", "trust-first", s4r["intro"])
+            # 6 bullets — anchored by their opening fragments
+            right_frags = [
+                ("b1", "Enable EIIL"),
+                ("b2", "Define a risk led"),
+                ("b3", "Establish prioritized"),
+                ("b4", "Strengthen privacy governance"),
+                ("b5", "Consolidate key observations"),
+                ("b6", "Deliver a risk prioritized"),
+            ]
+            for key, frag in right_frags:
+                if s4r.get(key):
+                    set_para_text(s4, "TextBox 12", frag, s4r[key])
 
     # ── Slide 11 (index 10) ──────────────────────────────────
     if len(prs.slides) > 10:
@@ -586,7 +666,25 @@ if generate_btn:
             ai["s4_bullets"] = []
             st.warning(f"s4_bullets: {e}")
 
-        st.write("📝 Slide 11 — Operating model paragraph…")
+        st.write("📝 Slide 4 — Right-side 'How We Will Help' box…")
+        S4R_LIMITS = {"intro":24, "b1":28, "b2":22, "b3":16, "b4":25, "b5":25, "b6":30}
+        try:
+            raw_r = groq_call(client,
+                              P_S4_RIGHT.format(company_name=company_name,
+                                                company_short=company_short,
+                                                business_model=biz_model,
+                                                website_text=web[:2000]),
+                              max_tokens=900)
+            raw_r = re.sub(r"^```(?:json)?", "", raw_r).strip()
+            raw_r = re.sub(r"```$",          "", raw_r).strip()
+            s4r = json.loads(raw_r)
+            for k, lim in S4R_LIMITS.items():
+                if k in s4r:
+                    s4r[k] = " ".join(s4r[k].split()[:lim])
+            ai["s4_right"] = s4r
+        except Exception as e:
+            ai["s4_right"] = {}
+            st.warning(f"s4_right: {e}")
         safe("s11",
              P_S11.format(company_name=company_name,
                           company_short=company_short,
@@ -658,9 +756,15 @@ if generate_btn:
         st.markdown("**Slide 4 – Scope Paragraph:**")
         st.info(ai.get("s4_scope", ""))
         if ai.get("s4_bullets"):
-            st.markdown("**Slide 4 – Scope Bullets:**")
+            st.markdown("**Slide 4 – Scope Bullets (Left):**")
             for b in ai["s4_bullets"]:
                 st.write(f"• {b}")
+        if ai.get("s4_right"):
+            st.markdown("**Slide 4 – How We Will Help (Right):**")
+            r = ai["s4_right"]
+            st.info(r.get("intro",""))
+            for k in ["b1","b2","b3","b4","b5","b6"]:
+                if r.get(k): st.write(f"• {r[k]}")
         st.markdown("**Slide 11 – Operating Model Paragraph:**")
         st.info(ai.get("s11", ""))
         if ai.get("s17_lifecycle"):
