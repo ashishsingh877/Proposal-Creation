@@ -29,24 +29,54 @@ from groq import Groq
 # ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="AI Proposal Generator", page_icon="📊", layout="wide")
 
-# ── Hide Streamlit chrome: Fork button, GitHub icon, toolbar, profile bubble ──
+# ── Hide Streamlit branding but KEEP sidebar toggle arrow ──
 st.markdown("""
 <style>
-/* Top toolbar — Fork, GitHub, menu dots */
-[data-testid="stToolbar"]          { visibility: hidden !important; }
-header[data-testid="stHeader"]     { visibility: hidden !important; }
-#MainMenu                          { visibility: hidden !important; }
+/* Hide top-right toolbar (Fork, GitHub, menu) but NOT the sidebar arrow */
+[data-testid="stToolbarActions"]       { display: none !important; }
+#MainMenu                              { display: none !important; }
 
-/* Bottom-right profile / user badge */
-[data-testid="stUserMenu"]         { display: none !important; }
-[data-testid="stDecoration"]       { display: none !important; }
+/* Hide footer */
+footer                                 { display: none !important; }
 
-/* Streamlit footer */
-footer                             { visibility: hidden !important; }
-
-/* Remove blank space left by hidden header */
+/* Remove blank gap from hidden header */
 .block-container { padding-top: 1.5rem !important; }
 </style>
+
+<script>
+// Remove "Manage app" bubble — injected by React after page load
+(function() {
+    function removeManageApp() {
+        // Target only the Manage App button, not the sidebar toggle
+        var selectors = [
+            '[data-testid="manage-app-button"]',
+            '[data-testid="stDeployButton"]',
+            'a[href*="streamlit.io/cloud"]'
+        ];
+        selectors.forEach(function(sel) {
+            document.querySelectorAll(sel).forEach(function(el) {
+                // Walk up to find the floating container
+                var target = el.closest('[style*="position: fixed"]') || el;
+                target.style.display = 'none';
+            });
+        });
+
+        // Also catch by text content "Manage app"
+        document.querySelectorAll('span, button, a').forEach(function(el) {
+            if (el.textContent.trim() === 'Manage app') {
+                var fixed = el.closest('[style*="position: fixed"]') || el.parentElement;
+                if (fixed) fixed.style.display = 'none';
+            }
+        });
+    }
+
+    removeManageApp();
+    var obs = new MutationObserver(removeManageApp);
+    obs.observe(document.body, { childList: true, subtree: true });
+    setTimeout(removeManageApp, 500);
+    setTimeout(removeManageApp, 2000);
+})();
+</script>
 """, unsafe_allow_html=True)
 st.title("📊 AI Proposal Generator")
 st.markdown(
