@@ -412,7 +412,34 @@ disposal [EXACTLY 47 words]:
 We will verify secure deletion, destruction and anonymization of records across digital platforms, manufacturing systems, archival repositories, distributor management systems and physical documentation. Disposal workflows will be reviewed for alignment with regulatory expectations and internal EIIL data-governance guidelines to ensure safe and compliant handling of obsolete data.
 """
 
+# ── Slide 19: Privacy Notice sentence (Rectangle 10) ─────────
+P_S19_NOTICE = """
+Rewrite the sentence below for the TARGET COMPANY. Replace ONLY the list of departments/
+functions/platforms after "covering" with accurate equivalents from the company profile.
+Keep every other word IDENTICAL.
 
+ORIGINAL:
+"Prepare tailored Privacy Notice and Consent Notice for {company_short}'s touchpoints covering
+manufacturing, quality, R&D, supply-chain, commercial, HR, enterprise platforms and
+cloud/SaaS applications."
+
+RULES:
+- Replace only: "manufacturing, quality, R&D, supply-chain, commercial, HR, enterprise
+  platforms and cloud/SaaS applications" with actual departments, functions and platforms
+  from the company profile — 6 to 8 items, comma-separated, ending with "and [last item]."
+- Keep "Prepare tailored Privacy Notice and Consent Notice for {company_short}'s touchpoints
+  covering" WORD FOR WORD
+- End with a full stop
+
+TARGET COMPANY PROFILE:
+Name: {company_name}, Short: {company_short}
+Industry: {industry}
+Key functions: {key_functions}
+Key systems: {key_systems}
+Service lines: {service_lines}
+
+Return ONLY the rewritten sentence. No labels, no quotes.
+"""
 
 # ─────────────────────────────────────────────────────────────
 # PPTX HELPERS
@@ -698,8 +725,48 @@ def build_presentation(pptx_bytes: bytes, company_name: str,
             if lc.get(key):
                 set_para_text(s17, shp_name, "We will", lc[key])
 
-    # ── Slides 12, 14, 19 – global replacements already done ─
-    # (gmap handles all remaining EIIL references)
+    # ── Slides 12, 14, 19 – targeted sentence replacement ────
+    # Bullet 1 & 2 from slide 4 are the SAME sentences that appear on
+    # slides 12 and 14. Reuse them. Also tailor the slide 19 notice sentence.
+    bullets = ai.get("s4_bullets", [])
+    b1 = bullets[0] if len(bullets) > 0 else ""  # enterprise-wide gap analysis sentence
+    b2 = bullets[1] if len(bullets) > 1 else ""  # privacy/security risk sentence
+    s19_notice = ai.get("s19_notice", "")
+
+    # Fragment anchors (unique enough to find the right paragraph)
+    FRAG_B1 = "enterprise\u2011wide privacy applicability"   # non-breaking hyphen in template
+    FRAG_B1b = "enterprise-wide privacy applicability"       # regular hyphen fallback
+    FRAG_B2 = "information security and regulatory risks"
+    FRAG_NOTICE = "Privacy Notice and Consent Notice"
+
+    def replace_in_slide(slide, fragment, new_text):
+        """Replace paragraph containing fragment anywhere in the slide. Returns True if found."""
+        if not new_text:
+            return False
+        for shape in slide.shapes:
+            if not shape.has_text_frame:
+                continue
+            for para in shape.text_frame.paragraphs:
+                full = "".join(r.text for r in para.runs)
+                if fragment in full:
+                    if para.runs:
+                        para.runs[0].text = new_text
+                        for r in para.runs[1:]:
+                            r.text = ""
+                    return True
+        return False
+
+    for slide_idx in [11, 13]:   # slides 12 and 14 (0-indexed)
+        if len(prs.slides) > slide_idx:
+            sl = prs.slides[slide_idx]
+            if b1:
+                if not replace_in_slide(sl, FRAG_B1, b1):
+                    replace_in_slide(sl, FRAG_B1b, b1)
+            if b2:
+                replace_in_slide(sl, FRAG_B2, b2)
+
+    if len(prs.slides) > 18 and s19_notice:   # slide 19
+        replace_in_slide(prs.slides[18], FRAG_NOTICE, s19_notice)
 
     # ── Final pass: remove all apostrophe-space gaps in every slide ─
     clean_apostrophes(prs)
@@ -914,6 +981,17 @@ if generate_btn:
         except Exception as e:
             ai["s17_lifecycle"] = {}
             st.warning(f"s17_lifecycle: {e}")
+
+        st.write("📝 Slides 12, 14, 19 — Tailoring operational sentences…")
+        safe("s19_notice",
+             P_S19_NOTICE.format(company_name=company_name,
+                                 company_short=company_short,
+                                 industry=industry,
+                                 key_functions=key_funcs,
+                                 key_systems=key_systems,
+                                 service_lines=svc_lines),
+             max_tok=120,
+             fallback=f"Prepare tailored Privacy Notice and Consent Notice for {company_short}'s touchpoints covering operations, quality, HR, finance, IT, enterprise platforms and cloud/SaaS applications.")
 
         sts.update(label="✅ All AI content generated", state="complete")
 
