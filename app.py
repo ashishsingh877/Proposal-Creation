@@ -28,6 +28,26 @@ from groq import Groq
 # PAGE CONFIG
 # ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="AI Proposal Generator", page_icon="📊", layout="wide")
+
+# ── Hide Streamlit chrome: Fork button, GitHub icon, toolbar, profile bubble ──
+st.markdown("""
+<style>
+/* Top toolbar — Fork, GitHub, menu dots */
+[data-testid="stToolbar"]          { visibility: hidden !important; }
+header[data-testid="stHeader"]     { visibility: hidden !important; }
+#MainMenu                          { visibility: hidden !important; }
+
+/* Bottom-right profile / user badge */
+[data-testid="stUserMenu"]         { display: none !important; }
+[data-testid="stDecoration"]       { display: none !important; }
+
+/* Streamlit footer */
+footer                             { visibility: hidden !important; }
+
+/* Remove blank space left by hidden header */
+.block-container { padding-top: 1.5rem !important; }
+</style>
+""", unsafe_allow_html=True)
 st.title("📊 AI Proposal Generator")
 st.markdown(
     "Upload the **template PPTX**, enter the target company details — "
