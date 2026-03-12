@@ -124,39 +124,34 @@ def groq_call(client: Groq, prompt: str, max_tokens: int = 1000) -> str:
 # ─────────────────────────────────────────────────────────────
 
 # ── Pre-step 1: Extract rich company profile ─────────────────
-# This is the KEY step — all other prompts consume this profile.
-# The more accurate this is, the better every slide will be tailored.
 P_COMPANY_PROFILE = """
-You are a business analyst. Read the company website content below and extract a structured
-profile of the company. Be SPECIFIC — use actual names, not generic placeholders.
+You are a business analyst. Read the company website content and extract a structured profile.
+Be SPECIFIC — use actual names from the website, not generic placeholders.
 
 Company: {company_name} ({company_short})
 Website content: {website_text}
 
 Return a JSON object with EXACTLY these keys:
-
 {{
-  "industry": "Primary industry sector (e.g. Business Process Outsourcing, Pharmaceuticals, IT Services, FMCG, Banking)",
+  "industry": "Primary industry sector e.g. Pharmaceutical Manufacturing, IT Services, BPO, FMCG, Banking",
   "business_model": "One sentence: B2B/B2C/B2B2C split, who they sell to, how they reach clients",
-  "service_lines": "Comma-separated list of 4–6 core service lines or product categories",
-  "key_sectors": "Comma-separated list of 3–5 industry verticals or client sectors served",
-  "key_functions": "Comma-separated list of 5–7 internal business functions (e.g. Operations, Finance, HR, IT, Compliance, Client Delivery)",
-  "key_systems": "Comma-separated list of 4–6 technology systems used (ERP, CRM, cloud platforms, analytics tools, etc.)",
-  "data_types": "Comma-separated list of 4–6 main personal data categories processed (e.g. employee data, client data, patient data)",
-  "partner_types": "Comma-separated list of 3–5 external party types (e.g. clients, vendors, regulators, sub-contractors)",
-  "geographic_footprint": "One phrase describing operational geography (e.g. pan-India with global delivery centres)",
-  "headcount_scale": "Approximate scale if mentioned (e.g. 50,000+ employees, mid-size, large enterprise)"
+  "service_lines": "Comma-separated 4-6 core service lines or product categories from the website",
+  "key_sectors": "Comma-separated 3-5 industry verticals or client sectors served",
+  "key_functions": "Comma-separated 5-7 internal business functions e.g. R&D, Manufacturing, Quality, HR, Finance, IT, Regulatory Affairs",
+  "key_systems": "Comma-separated 4-6 actual technology systems e.g. ERP, LIMS, CRM, cloud platforms",
+  "data_types": "Comma-separated 4-6 main personal data categories e.g. employee data, patient data, client data",
+  "partner_types": "Comma-separated 3-5 external party types e.g. distributors, CROs, regulatory bodies, technology vendors",
+  "geographic_footprint": "One phrase e.g. pan-India with global exports, nationwide with GCCs",
+  "channel_description": "How they primarily operate: direct sales / channel partners / online / B2B contracts etc."
 }}
 
-Return ONLY valid JSON. No markdown fences. Be specific — use real terms from the website, not generic ones.
+Return ONLY valid JSON. No markdown fences.
 """
 
-# ── Pre-step 2: Extract business model (kept for backward compat) ─
+# ── Pre-step 2: Business model (kept for compatibility) ──────
 P_BIZ_MODEL = """
-Analyse the company website content below and answer in ONE concise sentence (max 20 words):
+Analyse the company website content. Answer in ONE sentence (max 20 words):
 What is this company's primary business model and channels?
-
-Focus on: B2B / B2B2C / B2C split, who they sell to, and how they reach customers.
 
 Company: {company_name}
 Website content: {website_text}
@@ -164,50 +159,80 @@ Website content: {website_text}
 Return ONLY the single sentence. No labels.
 """
 
-# ── Slide 4: Company description BODY ONLY (TextBox 8 R1 — non-bold) ──────
+# ── Slide 4: Company description body (TextBox 8 R1) ─────────
+# APPROACH: Rewrite ORIGINAL sentence by sentence keeping EXACT grammatical skeleton.
+# Only replace: company type, product/service names, channel names, geography.
 P_DESC = """
-You are writing a professional consulting proposal. Write a company description body for the
-TARGET COMPANY below. This is NOT a rewrite of a template — generate fresh, accurate content.
+You are rewriting a company description for a professional consulting proposal.
+Rewrite the ORIGINAL below for the TARGET COMPANY by SURGICALLY replacing only the
+company-specific terms. Keep the EXACT sentence structure, tone, punctuation pattern
+and approximately the same word count per sentence.
 
-CRITICAL RULES:
-1. Start DIRECTLY with "is a leading" — do NOT include the company name
-2. EXACTLY 3 sentences — no more, no less
-3. EXACTLY 118–124 words total — count carefully
-4. Use ONLY the company profile provided — do NOT use manufacturing/product terms unless the
-   company actually makes physical products
-5. Content per sentence:
-   - Sentence 1: "is a leading [industry] [company/provider/firm]..." + actual service lines
-     or product segments from the profile + markets/geographies served
-   - Sentence 2: Business model + who they serve + specific client sectors + how they reach them
-     + any B2C touchpoints
-   - Sentence 3: Core delivery capabilities + actual technology systems + value proposition closing
+WHAT TO REPLACE:
+- "Indian manufacturer of portable energy and lighting solutions" -> accurate industry/type description
+- Product names (batteries, flashlights, lighting) -> actual service lines or products from profile
+- "B2B and B2B2C-driven model, serving distributors, retailers, institutional buyers and
+  large-scale channel partners through one of India's widest FMCG-style distribution networks" ->
+  actual business model and channels from profile
+- "brand engagement, after-sales support and product service programs" -> actual B2C touchpoints
+- "end-to-end product development, high-volume manufacturing, nationwide distribution and
+  lifecycle management" -> actual core delivery capabilities
+- "DSIR-approved R&D capabilities, integrated manufacturing facilities" -> actual capabilities/systems
+- "portable power and lighting solutions across diverse consumer and commercial segments" ->
+  actual value proposition
+- "EIIL" -> {company_short}
+
+WHAT TO KEEP EXACTLY (these frames are mandatory):
+- Frame 1: "is a leading ... operating through a ... model spanning ... across domestic and
+  select international markets."
+- Frame 2: "The company follows a predominantly ... model, serving ... through ..., while
+  maintaining limited ... interfaces through ..."
+- Frame 3: "[Short] enables end-to-end ... through technology-driven quality systems, ...,
+  ensuring safe, reliable, compliant and cost-efficient delivery of ... across diverse ...
+  segments."
 
 TARGET COMPANY PROFILE:
-Name: {company_name}
-Short name: {company_short}
+Name: {company_name} | Short: {company_short}
 Industry: {industry}
 Business model: {business_model}
 Service lines / Products: {service_lines}
-Key sectors served: {key_sectors}
+Key sectors: {key_sectors}
 Key systems: {key_systems}
 Geographic footprint: {geographic_footprint}
+Channel description: {channel_description}
 
-Return ONLY the paragraph body. Start with "is a leading". NO company name, NO labels, NO quotes.
+ORIGINAL (rewrite this — keep skeleton, replace company-specific terms only):
+is a leading Indian manufacturer of portable energy and lighting solutions, operating through a
+diversified multi-segment model spanning dry-cell batteries, flashlights, consumer lighting,
+professional lighting and electrical accessories across domestic and select international markets.
+The company follows a predominantly B2B and B2B2C-driven model, serving distributors, retailers,
+institutional buyers and large-scale channel partners through one of India's widest FMCG-style
+distribution networks, while maintaining limited B2C interfaces through brand engagement,
+after-sales support and product service programs. EIIL enables end-to-end product development,
+high-volume manufacturing, nationwide distribution and lifecycle management through
+technology-driven quality systems, DSIR-approved R&D capabilities, integrated manufacturing
+facilities and data-enabled supply-chain operations, ensuring safe, reliable, compliant and
+cost-efficient delivery of portable power and lighting solutions across diverse consumer and
+commercial segments.
+
+Return ONLY the rewritten body. Start with "is a leading". 118-124 words. No labels, no quotes.
 """
 
 # ── Slide 4: Scope operations phrase (TextBox 3 P0 R3) ───────
 P_SCOPE_OPS = """
-Complete the sentence below for the target company. Fill in [OPS] ONLY.
+Complete the sentence below for the target company. Replace [OPS] ONLY — every other word stays.
 
-TEMPLATE:
-"and applicable Rules, calibrated to its people, process and technology landscape across [OPS]."
+SENTENCE: "and applicable Rules, calibrated to its people, process and technology landscape
+across [OPS]."
 
-Rules:
-- [OPS] = 5–10 words describing the company's ACTUAL core business operations
-- Use the company profile — do NOT use generic or incorrect industry terms
-- Examples for a BPO: "business process outsourcing, analytics and digital services operations"
-- Examples for a bank: "retail banking, corporate lending and digital financial services operations"
-- Examples for IT services: "enterprise IT services, cloud solutions and managed services operations"
+[OPS] = 5-10 words describing the company's ACTUAL core operations.
+Do NOT use manufacturing/logistics unless the company actually operates in those industries.
+
+Examples:
+- BPO/Analytics: "business process outsourcing, analytics and digital services operations"
+- Pharma manufacturing: "pharmaceutical manufacturing, R&D and global distribution operations"
+- IT services: "enterprise IT services, cloud solutions and managed services operations"
+- NBFC: "lending, leasing, digital credit and financial services operations"
 
 TARGET COMPANY PROFILE:
 Name: {company_name}, Short: {company_short}
@@ -220,204 +245,174 @@ Return ONLY the complete sentence starting with "and applicable Rules...". No la
 
 # ── Slide 4: 7 scope bullets ──────────────────────────────────
 P_BULLETS = """
-You are writing 7 scope bullets for a DPDPA privacy consulting proposal.
-Generate these fresh for the TARGET COMPANY — do NOT copy manufacturing/product terms
-unless the company actually operates in that industry.
+You are rewriting 7 scope bullets for a DPDPA privacy consulting proposal.
+APPROACH: Rewrite each ORIGINAL bullet by SURGICALLY replacing only the EIIL/Eveready-specific
+operational terms. Keep EVERY privacy/compliance/methodology word IDENTICAL to the original.
+Keep the EXACT sentence structure of each bullet.
 
-RULES:
-- Each bullet max 35 words
-- Replace ALL industry-specific references with accurate terms from the company profile below
-- Keep ALL privacy/compliance/governance language exactly as-is
-- Be specific: name actual functions, platforms, systems and partner types from the profile
-- Bullets 1 and 2 MUST reference the company's actual functions, systems and partner types
-- Bullets 3–7 keep the same privacy methodology but replace any operational references
+WHAT TO REPLACE:
+- Bullet 1: "EIIL's manufacturing, R&D, supply chain, procurement, commercial, HR, enterprise
+  systems and distribution operations" -> replace with actual functions from profile
+- Bullet 2: "EIIL's manufacturing, quality, logistics, commercial, enterprise and SaaS platforms"
+  -> replace with actual platforms; "distributors, retailers, logistics partners and service
+  vendors" -> replace with actual partner types from profile
+- Bullet 5: "corporate, manufacturing, R&D, commercial and customer-facing teams" -> replace
+  with actual teams from profile
+- Bullets 3, 4, 6, 7: Only replace "EIIL" with company short name; keep all else identical
 
 TARGET COMPANY PROFILE:
 Name: {company_name}, Short: {company_short}
 Industry: {industry}
 Service lines: {service_lines}
-Key sectors: {key_sectors}
 Key functions: {key_functions}
 Key systems: {key_systems}
 Partner types: {partner_types}
 
-BULLET STRUCTURE (rewrite each one — same privacy methodology, company-accurate operations):
-1. Enterprise-wide applicability assessment and privacy gap analysis — mention the company's
-   actual functions, systems and data flows (not manufacturing/logistics unless relevant)
-2. Privacy, information security and regulatory risks — mention actual platforms, SaaS tools,
-   analytics environments and the company's specific third-party network types
-3. Governance structures — lawful purpose, consent, retention, erasure, grievance, DPR,
-   cross-border transfers, breach processes (keep this largely generic/privacy-focused)
-4. Scalable privacy governance and risk framework — roles, DPIAs, digital initiatives
-5. Privacy policies, notices, consent, DPR, breach response — tailored to actual teams
-6. Remediation across key platforms — consent workflows, DPR, data minimization
-7. Privacy training, KPIs, RACI, dashboards — oversight and executive visibility
+ORIGINALS (rewrite each — surgical replacement only, keep all privacy words):
+1. Conduct an enterprise-wide applicability assessment and privacy gap analysis, covering data discovery, lifecycle mapping, inventories, RoPA and documentation of internal/external data flows across EIIL's manufacturing, R&D, supply chain, procurement, commercial, HR, enterprise systems and distribution operations.
+2. Assess privacy, information security and regulatory risks across EIIL's manufacturing, quality, logistics, commercial, enterprise and SaaS platforms, including analytics environments, physical repositories and third-party networks such as distributors, retailers, logistics partners and service vendors.
+3. Evaluate governance structures, policies and controls covering lawful purpose, consent (where applicable), retention, erasure, grievance handling, DPR workflows, cross-border transfers and personal data breach processes.
+4. Design and operationalize a scalable privacy governance and risk framework, defining roles, accountability, escalation paths and procedures for DPIAs and risk-based reviews of new systems, digital initiatives and operational programs.
+5. Support rollout of updated privacy policies, notices and procedures for consent, DPR, retention/deletion, breach response and DPIA processes, tailored for corporate, manufacturing, R&D, commercial and customer-facing teams.
+6. Coordinate remediation across key platforms to strengthen consent workflows, DPR handling, third-party data sharing controls, data minimization and privacy-by-design requirements with support from selected tooling partners.
+7. Deliver role-based privacy training, define governance KPIs and RACI structures and enable reporting and dashboards to support continuous oversight, audit readiness, regulatory preparedness and executive visibility.
 
 Return exactly 7 lines. No numbering, no bullet symbols, no extra text.
 """
 
 # ── Slide 4: Right-side "How We Will Help" (TextBox 12) ──────
 P_S4_RIGHT = """
-You are writing bullet points for the "How We Will Help" section of a DPDPA privacy consulting
-proposal for the TARGET COMPANY.
+You are rewriting 6 bullets for the "How We Will Help" section of a DPDPA consulting proposal.
+APPROACH: Replace "EIIL" with the company short name. Keep ALL other words IDENTICAL.
+These bullets are largely methodology-based so very little changes.
 
 RULES:
-- Use the company short name where the original says "EIIL"
-- Replace ALL industry-specific operational terms with accurate terms for this company
-- Keep ALL DPDPA/privacy/governance methodology language EXACTLY as-is
-- Match the EXACT word count in brackets for each bullet — fixed-size text boxes
-- Be specific to this company's actual industry — do NOT use manufacturing terms for a BPO/IT firm
+- Replace "EIIL" -> {company_short} everywhere
+- Keep ALL DPDPA/privacy/governance language WORD FOR WORD
+- Match EXACT word count shown in brackets — fixed-size text boxes
 
-TARGET COMPANY PROFILE:
-Name: {company_name}
-Short name: {company_short}
+TARGET COMPANY: Name: {company_name}, Short: {company_short}
 Industry: {industry}
-Business model: {business_model}
-Service lines: {service_lines}
-Key sectors: {key_sectors}
 
-Return a JSON object with EXACTLY these 6 keys: "b1","b2","b3","b4","b5","b6"
-Values = text only. No bullet symbols. Return ONLY valid JSON. No markdown fences.
+Return JSON with keys "b1","b2","b3","b4","b5","b6". Values = text only. ONLY valid JSON.
 
-ORIGINALS — rewrite replacing EIIL/Eveready and any industry-specific terms:
+ORIGINALS — replace EIIL only, keep everything else word for word:
 
 b1 [EXACTLY 28 words]:
-Enable {company_short}'s transition to sustained compliance with the Digital Personal Data
-Protection Act by translating regulatory requirements into a risk-calibrated privacy and
-governance framework aligned to business priorities.
+Enable EIIL's transition to sustained compliance with the Digital Personal Data Protection Act by translating regulatory requirements into a risk-calibrated privacy and governance framework aligned to business priorities.
 
 b2 [EXACTLY 22 words]:
-Define a risk led, high level compliance roadmap addressing material privacy, data protection
-and operational gaps across {company_short}'s personal data processing landscape.
+Define a risk led, high level compliance roadmap addressing material privacy, data protection and operational gaps across EIIL's personal data processing landscape.
 
 b3 [EXACTLY 16 words]:
-Establish prioritized remediation themes, sequencing logic and clear accountability structures
-to support effective and scalable compliance.
+Establish prioritized remediation themes, sequencing logic and clear accountability structures to support effective and scalable compliance.
 
 b4 [EXACTLY 25 words]:
-Strengthen privacy governance and control architecture by embedding oversight, decision making
-and process rigor in line with privacy by design and privacy by default principles.
+Strengthen privacy governance and control architecture by embedding oversight, decision making and process rigor in line with privacy by design and privacy by default principles.
 
 b5 [EXACTLY 25 words]:
-Consolidate key observations and the compliance roadmap into formal deliverables to support
-executive oversight, audit readiness and regulatory preparedness, while enhancing stakeholder
-trust and transparency.
+Consolidate key observations and the compliance roadmap into formal deliverables to support executive oversight, audit readiness and regulatory preparedness, while enhancing stakeholder trust and transparency.
 
 b6 [EXACTLY 30 words]:
-Deliver a risk prioritized remediation roadmap and support governance enablement through a
-Privacy Steering Committee, defined KPIs, RACI structures and PMO aligned reporting to
-facilitate coordinated implementation and sustained compliance.
+Deliver a risk prioritized remediation roadmap and support governance enablement through a Privacy Steering Committee, defined KPIs, RACI structures and PMO aligned reporting to facilitate coordinated implementation and sustained compliance.
 """
 
 # ── Slide 11: Operating model paragraph ──────────────────────
 P_S11 = """
-You are writing one paragraph for a professional consulting proposal slide.
-The text box is FIXED size — the paragraph MUST be EXACTLY 82 words.
+You are rewriting one paragraph for a professional consulting proposal.
+The text box is FIXED size — EXACTLY 82 words required.
 
-RULES:
-- Use the company profile to describe ACTUAL operations — do NOT use manufacturing/logistics
-  terms unless the company is actually a manufacturer
-- Use the EXACT business model for the channel description
-- Keep the EXACT 2-sentence structure shown below
-- Count every word — must be exactly 82
+APPROACH: Rewrite the ORIGINAL by replacing EIIL/Eveready-specific operational terms ONLY.
+Keep EVERY other word IDENTICAL to the original. Maintain exact sentence structure.
+
+WHAT TO REPLACE:
+- "Eveready Industries India Ltd." -> {company_name}
+- "manufacturing, supply-chain, commercial, distribution and corporate operations" ->
+  actual operations from service lines and key functions
+- "B2B and B2B2C channels" -> actual channels from business model
+- "customer service interactions, warranty support and brand engagement programs" ->
+  actual B2C data touchpoints (use "client service interactions and digital platform usage"
+  if fully B2B)
+- "EIIL's" -> {company_short}'s
+- "nationwide operational footprint" -> actual geography from profile
 
 TARGET COMPANY PROFILE:
-Name: {company_name}
-Short name: {company_short}
+Name: {company_name}, Short: {company_short}
 Industry: {industry}
 Business model: {business_model}
 Service lines: {service_lines}
 Key functions: {key_functions}
 Geographic footprint: {geographic_footprint}
+Channel description: {channel_description}
 
-SENTENCE STRUCTURE TO FOLLOW:
-Sentence 1: "For this engagement, the privacy compliance model will be applied exclusively to
-the internal functions, processes and governance structures of [company_name], supporting its
-[actual operations from service lines/functions], which primarily operate through [channels
-from business model], with [B2C data touchpoints if any]."
-Sentence 2: "This approach ensures a focused effort on strengthening [company_short]'s internal
-privacy governance and compliance capabilities, aligned with applicable regulatory requirements,
-its operating model and its [geographic_footprint] operational footprint."
-
-ORIGINAL for reference (82 words):
+ORIGINAL (82 words — replace marked terms ONLY, keep all else word for word):
 For this engagement, the privacy compliance model will be applied exclusively to the internal
-functions, processes and governance structures of Eveready Industries India Ltd., supporting its
-manufacturing, supply-chain, commercial, distribution and corporate operations, which primarily
-operate through B2B and B2B2C channels, with limited B2C personal data processing through
-customer service interactions, warranty support and brand engagement programs. This approach
-ensures a focused effort on strengthening EIIL's internal privacy governance and compliance
-capabilities, aligned with applicable regulatory requirements, its operating model and its
-nationwide operational footprint.
+functions, processes and governance structures of Eveready Industries India Ltd., supporting
+its manufacturing, supply-chain, commercial, distribution and corporate operations, which
+primarily operate through B2B and B2B2C channels, with limited B2C personal data processing
+through customer service interactions, warranty support and brand engagement programs. This
+approach ensures a focused effort on strengthening EIIL's internal privacy governance and
+compliance capabilities, aligned with applicable regulatory requirements, its operating model
+and its nationwide operational footprint.
 
 Return ONLY the paragraph. EXACTLY 82 words. No labels, no quotes.
 """
 
 # ── Slide 17: Data Lifecycle ──────────────────────────────────
 P_S17 = """
-You are writing 6 Data Lifecycle paragraphs for a professional consulting proposal.
-Each paragraph fits inside a FIXED-SIZE text box — you MUST hit the EXACT word count.
-Count every word carefully.
+You are rewriting 6 Data Lifecycle paragraphs for a professional consulting proposal.
+Each paragraph is in a FIXED-SIZE text box — EXACT word counts are mandatory.
 
-CRITICAL: Use the company profile below to name ACTUAL systems, functions, data types and
-partner types for this company. Do NOT copy manufacturing/product/logistics terms unless the
-company is actually in that industry.
+APPROACH: Rewrite each ORIGINAL paragraph by replacing EIIL/Eveready-specific operational
+terms with accurate equivalents from the company profile. Keep EVERY other word IDENTICAL.
+Maintain the EXACT sentence structure, punctuation and flow of each original.
+
+WHAT TO REPLACE (use the profile below for accurate replacements):
+- "Eveready Industries India Ltd. (EIIL)" -> "{company_name} ({company_short})"
+- Functions/processes (e.g. "manufacturing processes for batteries, flashlights") ->
+  actual functions/service lines from profile
+- Systems (e.g. "plant-level manufacturing systems, distribution platforms, logistics systems") ->
+  actual systems from profile
+- Partner types (e.g. "distributor onboarding") -> actual partner types from profile
+- Data types (e.g. "manufacturing, safety") -> actual data categories from profile
+- Geography (e.g. "EIIL's nationwide network") -> actual footprint from profile
+- "EIIL's" -> "{company_short}'s" everywhere
 
 TARGET COMPANY PROFILE:
-Name: {company_name}
-Short name: {company_short}
+Name: {company_name}, Short: {company_short}
 Industry: {industry}
 Service lines: {service_lines}
-Key sectors: {key_sectors}
 Key functions: {key_functions}
 Key systems: {key_systems}
 Data types: {data_types}
 Partner types: {partner_types}
 Geographic footprint: {geographic_footprint}
 
-Return a JSON object with exactly these 6 keys:
-"collection", "use_processing", "storage", "sharing", "retention", "disposal"
-Value = body paragraph text ONLY (no title, no section number).
-Return ONLY valid JSON. No markdown fences.
+Return JSON keys: "collection","use_processing","storage","sharing","retention","disposal"
+Value = paragraph text ONLY (no title, no number). ONLY valid JSON. No markdown fences.
 
-STRUCTURE FOR EACH SECTION (follow sentence structure, use company-accurate content):
+ORIGINALS — surgical replacement only, keep all other words IDENTICAL:
 
 collection [EXACTLY 61 words]:
-"We will review how [company_name] ([company_short]) collects personal, operational and
-regulatory data across functions such as [list 4–5 actual functions/processes using semicolons];
-and [last function]. This includes data captured through [list 3–4 actual systems] used across
-[company_short]'s [geographic] network."
+We will review how Eveready Industries India Ltd. (EIIL) collects personal, operational and regulatory data across functions such as employee onboarding; manufacturing processes for batteries, flashlights and lighting products; distributor onboarding; sales operations; supply-chain coordination; and customer service requirements. This includes data captured through ERP systems, plant-level manufacturing systems, distribution platforms, logistics systems and digital interfaces used across EIIL's nationwide network.
 
 use_processing [EXACTLY 64 words]:
-"We will assess how collected data is used for [3–4 actual use cases] across [company_short]'s
-key [segments/service lines]: [list 4–5 actual service lines]. This includes data integration
-across systems such as [list 3–4 actual systems], along with tools supporting [2–3 actual
-functions]."
+We will assess how collected data is used for manufacturing planning, quality control, inventory management, supply chain coordination, compliance reporting and performance monitoring across EIIL's key segments: batteries, flashlights, consumer lighting, professional lighting and electrical accessories. This includes data integration across systems such as ERP, CRM, distributor management systems and plant-level automation platforms, along with tools supporting R&D operations, workforce management and operational efficiency.
 
 storage [EXACTLY 48 words]:
-"We will examine secure storage of [3–4 actual data types] across cloud platforms, on-premise
-servers at [company_short]'s [actual locations/offices], validated [actual system types], backup
-systems and [actual repositories]. Controls for authentication, role-based access, audit trails
-and compliance with applicable industry and corporate guidelines will also be reviewed."
+We will examine secure storage of manufacturing, safety, employee and vendor data across cloud platforms, on-premise servers at EIIL's manufacturing units, validated production systems, backup systems and R&D repositories. Controls for authentication, role-based access, audit trails and compliance with applicable industry and corporate guidelines will also be reviewed.
 
 sharing [EXACTLY 36 words]:
-"We will evaluate data-sharing practices with [list 4–5 actual partner types from profile],
-regulatory authorities and internal teams. This includes reviewing contractual safeguards,
-[industry-specific] data-processing requirements, cross-border data transfer practices
-(where applicable), anonymization procedures and security measures."
+We will evaluate data-sharing practices with distributors, logistics partners, manufacturing vendors, regulatory authorities, retailers and internal teams. This includes reviewing contractual safeguards, supply-chain data-processing requirements, cross-border data transfer practices (where applicable), anonymization procedures and security measures.
 
 retention [EXACTLY 43 words]:
-"We will review retention policies for [list 5–6 actual record/data types relevant to this
-company], vendor documentation, partner agreements, operational logs and financial documentation.
-Retention requirements will be assessed against regulatory mandates, audit requirements and
-internal [company_short] governance policies."
+We will review retention policies for manufacturing logs, quality-control reports, product testing data, R&D records, HR and payroll files, vendor documentation, distributor agreements, operational logs and financial documentation. Retention requirements will be assessed against regulatory mandates, audit requirements and internal EIIL governance policies.
 
 disposal [EXACTLY 47 words]:
-"We will verify secure deletion, destruction and anonymization of records across [list 3–4
-actual platform types for this company], archival repositories, [relevant management systems]
-and physical documentation. Disposal workflows will be reviewed for alignment with regulatory
-expectations and internal [company_short] data-governance guidelines to ensure safe handling
-of obsolete data."
+We will verify secure deletion, destruction and anonymization of records across digital platforms, manufacturing systems, archival repositories, distributor management systems and physical documentation. Disposal workflows will be reviewed for alignment with regulatory expectations and internal EIIL data-governance guidelines to ensure safe and compliant handling of obsolete data.
 """
+
+
 
 # ─────────────────────────────────────────────────────────────
 # PPTX HELPERS
