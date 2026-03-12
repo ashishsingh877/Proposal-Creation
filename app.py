@@ -401,6 +401,49 @@ def rep_slide(slide, rep: dict):
         _rep_shape(shape, rep)
 
 
+def clean_apostrophes(prs):
+    """
+    Fix all apostrophe-space gaps across every text run in the presentation.
+
+    Two root causes:
+    1. Template typos: e.g. 'EIIL\u2019 privacy' (curly-apos + space, 's' missing)
+       → after name replace: 'SGD Pharma\u2019 privacy' — the space survives
+    2. Run-split: run[j] ends with company name (trailing space), run[j+1] starts
+       with apostrophe → renders as 'SGD Pharma 's'
+
+    Fix strategy:
+    a) Within each run: collapse 'word \u2019s' → 'word\u2019s' and 'word \'s' → 'word\'s'
+    b) Across run boundaries: if run[j] ends with a letter/space and run[j+1] starts
+       with an apostrophe, strip trailing space from run[j]
+    """
+    APOS = ("\u2019", "\u2018", "'")   # curly-right, curly-left, straight
+
+    def fix_run_text(text):
+        for ap in APOS:
+            # Pattern: word-char + space + apostrophe → word-char + apostrophe (no space)
+            text = re.sub(r'(\w) ' + re.escape(ap), r'\1' + ap, text)
+        return text
+
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            if not shape.has_text_frame:
+                continue
+            for para in shape.text_frame.paragraphs:
+                runs = list(para.runs)
+                # (a) Fix within each run
+                for run in runs:
+                    fixed = fix_run_text(run.text)
+                    if fixed != run.text:
+                        run.text = fixed
+                # (b) Fix across run boundaries
+                for j in range(len(runs) - 1):
+                    for ap in APOS:
+                        if runs[j + 1].text.startswith(ap):
+                            # Strip trailing space from run[j]
+                            if runs[j].text.endswith(" "):
+                                runs[j].text = runs[j].text.rstrip(" ")
+
+
 def set_para_text(slide, shape_name: str, fragment: str, new_text: str) -> bool:
     """Find paragraph whose combined run-text contains fragment; replace with new_text."""
     for shape in slide.shapes:
@@ -496,10 +539,17 @@ def build_presentation(pptx_bytes: bytes, company_name: str,
         "Eveready Industries India Ltd. (EIIL)": company_name,
         "Eveready Industries India Ltd":         company_name.split("(")[0].strip().rstrip(","),
         "Eveready Industries":                   company_name.split("(")[0].strip().rstrip(","),
+        # Straight apostrophe variants
         " EIIL'":   f" {company_short}'",
         " EIIL's":  f" {company_short}'s",
-        "(EIIL)":   f"({company_short})",
-        "EIIL":     company_short,
+        # Curly-apostrophe variants (U+2019) — used throughout the template
+        " EIIL\u2019s": f" {company_short}\u2019s",
+        " EIIL\u2019":  f" {company_short}\u2019s",   # template typo: missing 's' after apostrophe
+        "EIIL\u2019s":  f"{company_short}\u2019s",
+        "EIIL\u2019 ":  f"{company_short}\u2019s ",   # template typo in same run (no leading space)
+        "EIIL\u2019":   f"{company_short}\u2019s",    # bare curly apos without trailing space
+        "(EIIL)":        f"({company_short})",
+        "EIIL":          company_short,
     }
     for slide in prs.slides:
         rep_slide(slide, gmap)
@@ -602,6 +652,9 @@ def build_presentation(pptx_bytes: bytes, company_name: str,
 
     # ── Slides 12, 14, 19 – global replacements already done ─
     # (gmap handles all remaining EIIL references)
+
+    # ── Final pass: remove all apostrophe-space gaps in every slide ─
+    clean_apostrophes(prs)
 
     buf = io.BytesIO()
     prs.save(buf)
