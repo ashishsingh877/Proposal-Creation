@@ -421,12 +421,12 @@ def set_para_text(slide, shape_name: str, fragment: str, new_text: str) -> bool:
 # ─────────────────────────────────────────────────────────────
 def fix_slide4_bullets(slide):
     """
-    TextBox 12 (right column) uses Wingdings § — renders as solid squares.
-    TextBox 3  (left column)  uses Arial • with buSzPct=100000, buClr=#3C3D3E.
-    Patch TextBox 12 to be byte-for-byte identical in bullet styling to TextBox 3.
+    Ensure TextBox 12 right-column bullet paragraphs render as Arial • circles.
 
-    Correct OOXML child order inside <a:pPr>:
-      ... → buClr → buSzPct → buFont → buChar → ...
+    CRITICAL OOXML ORDER inside <a:pPr>:
+      spcBef → spcAft → buClr → buSzPct → buFont → buChar → tabLst → defRPr → extLst
+    Appending to the end puts bullets AFTER defRPr → PowerPoint ignores them → no dots.
+    We must INSERT before defRPr using the element's index in pPr's child list.
     """
     BULLET_TAGS = ("buNone", "buClrTx", "buClr", "buSzTx", "buSzPct",
                    "buSzClamp", "buFont", "buFontTx", "buChar", "buAutoNum")
@@ -434,46 +434,51 @@ def fix_slide4_bullets(slide):
     for shape in slide.shapes:
         if shape.name != "TextBox 12":
             continue
-        for para in shape.text_frame.paragraphs:
+        # Snapshot paragraphs to a plain list — avoids lxml proxy identity issues
+        paras = list(shape.text_frame.paragraphs)
+        for i, para in enumerate(paras):
+            if i < 2:                               # P0=heading, P1=intro — no bullet
+                continue
             pPr = para._p.find(f"{{{ANS}}}pPr")
             if pPr is None:
                 continue
-            # Only touch lines that already carry a bullet character
-            if pPr.find(f"{{{ANS}}}buChar") is None:
-                continue
 
-            # ── Remove ALL existing bullet-related elements ───────
+            # ── Remove ALL existing bullet-related elements ──────
             for tag in BULLET_TAGS:
                 el = pPr.find(f"{{{ANS}}}{tag}")
                 if el is not None:
                     pPr.remove(el)
 
-            # ── Build the 4 elements that match the left column ──
-            # 1. buClr  — colour #3C3D3E (same as TextBox 3)
-            bu_clr = etree.fromstring(
-                f'<a:buClr xmlns:a="{ANS}">'
-                f'  <a:srgbClr val="3C3D3E"/>'
-                f'</a:buClr>'
+            # ── Build the 4 elements matching the left column ───
+            bu_clr  = etree.fromstring(
+                f'<a:buClr xmlns:a="{ANS}"><a:srgbClr val="3C3D3E"/></a:buClr>'
             )
-            # 2. buSzPct — 100 % (val=100000)
-            bu_sz = etree.fromstring(
+            bu_sz   = etree.fromstring(
                 f'<a:buSzPct xmlns:a="{ANS}" val="100000"/>'
             )
-            # 3. buFont  — Arial (same face as TextBox 3)
             bu_font = etree.fromstring(
                 f'<a:buFont xmlns:a="{ANS}" typeface="Arial" '
                 f'panose="020B0604020202020204" pitchFamily="34" charset="0"/>'
             )
-            # 4. buChar  — solid circle •
             bu_char = etree.fromstring(
                 f'<a:buChar xmlns:a="{ANS}" char="\u2022"/>'
             )
 
-            # ── Append in correct OOXML order ──────────────────
-            pPr.append(bu_clr)
-            pPr.append(bu_sz)
-            pPr.append(bu_font)
-            pPr.append(bu_char)
+            # ── INSERT before <a:defRPr> so OOXML order is valid ─
+            pPr_children = list(pPr)               # snapshot children list
+            defRPr = pPr.find(f"{{{ANS}}}defRPr")
+            if defRPr is not None:
+                ins_idx = pPr_children.index(defRPr)
+                # Insert in reverse order so they land in the correct sequence
+                for el in (bu_char, bu_font, bu_sz, bu_clr):
+                    pPr.insert(ins_idx, el)
+            else:
+                for el in (bu_clr, bu_sz, bu_font, bu_char):
+                    pPr.append(el)
+
+            # ── Ensure hanging-indent attributes are present ─────
+            if not pPr.get("marL"):   pPr.set("marL",   "171450")
+            if not pPr.get("indent"): pPr.set("indent", "-171450")
 
 
 # ─────────────────────────────────────────────────────────────
@@ -520,27 +525,32 @@ def build_presentation(pptx_bytes: bytes, company_name: str,
             if new_b:
                 set_para_text(s4, "TextBox 3", frag, new_b)
 
-        # Fix right-side bullets from Wingdings § → Arial •  (must run before text write)
+        # Fix right-side bullets — insert BEFORE defRPr so OOXML order is valid
         fix_slide4_bullets(s4)
 
-        # Right-side "How We Will Help" box (TextBox 12) — AI rewrite
+        # Right-side "How We Will Help" box (TextBox 12) — AI rewrite by PARAGRAPH INDEX
+        # Index map: P0=heading(skip), P1=intro, P2..P7=6 bullets
+        # Using index avoids fragment-match failures caused by prior global name replacement
         s4r = ai.get("s4_right", {})
         if s4r:
-            # intro paragraph (P1 — the non-bullet intro after the heading)
-            if s4r.get("intro"):
-                set_para_text(s4, "TextBox 12", "trust-first", s4r["intro"])
-            # 6 bullets — anchored by their opening fragments
-            right_frags = [
-                ("b1", "Enable EIIL"),
-                ("b2", "Define a risk led"),
-                ("b3", "Establish prioritized"),
-                ("b4", "Strengthen privacy governance"),
-                ("b5", "Consolidate key observations"),
-                ("b6", "Deliver a risk prioritized"),
-            ]
-            for key, frag in right_frags:
-                if s4r.get(key):
-                    set_para_text(s4, "TextBox 12", frag, s4r[key])
+            for shape in s4.shapes:
+                if shape.name != "TextBox 12":
+                    continue
+                paras = shape.text_frame.paragraphs
+                # P1 — intro paragraph
+                if s4r.get("intro") and len(paras) > 1:
+                    p = paras[1]
+                    if p.runs:
+                        p.runs[0].text = s4r["intro"]
+                        for r in p.runs[1:]: r.text = ""
+                # P2..P7 — 6 bullets
+                for i, key in enumerate(["b1","b2","b3","b4","b5","b6"], start=2):
+                    if s4r.get(key) and len(paras) > i:
+                        p = paras[i]
+                        if p.runs:
+                            p.runs[0].text = s4r[key]
+                            for r in p.runs[1:]: r.text = ""
+                break
 
     # ── Slide 11 (index 10) ──────────────────────────────────
     if len(prs.slides) > 10:
