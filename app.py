@@ -30,30 +30,22 @@ from groq import Groq
 # ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="AI Proposal Generator", page_icon="📊", layout="wide")
 
-# ── Only hide the "Manage app" bubble — keep sidebar toggle intact ──
+# ── Hide "Manage app" bubble — all themes, all devices ──
 st.markdown("""
 <style>
-[data-testid="stStatusWidget"]          { display: none !important; }
-[data-testid="stMainMenuPopover"]        { display: none !important; }
-footer                                   { display: none !important; }
+/* Manage app bar — primary selector */
+[data-testid="stStatusWidget"]              { display: none !important; }
+[data-testid="stStatusWidget"] *            { display: none !important; }
+
+/* Toolbar top-right (Fork, GitHub) */
+[data-testid="stToolbarActions"]            { display: none !important; }
+[data-testid="stMainMenuPopover"]           { display: none !important; }
+
+/* Footer */
+footer                                      { display: none !important; }
+#MainMenu                                   { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
-
-components.html("""
-<script>
-(function() {
-    function kill() {
-        var doc = window.parent.document;
-        var el = doc.querySelector('[data-testid="stStatusWidget"]');
-        if (el) el.style.cssText += 'display:none!important';
-    }
-    kill();
-    var obs = new MutationObserver(kill);
-    obs.observe(window.parent.document.body, { childList: true, subtree: true });
-    [500, 1500, 3000].forEach(function(t) { setTimeout(kill, t); });
-})();
-</script>
-""", height=0)
 
 st.title("📊 AI Proposal Generator")
 st.markdown(
