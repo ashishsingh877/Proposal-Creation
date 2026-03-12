@@ -30,9 +30,11 @@ from groq import Groq
 # ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="AI Proposal Generator", page_icon="📊", layout="wide")
 
-# ── Hide toolbar actions and footer (CSS) ──
+# ── Hide toolbar actions, footer, and Manage app bubble ──
 st.markdown("""
 <style>
+/* Correct selector for the "Manage app" bubble — mobile and desktop */
+[data-testid="stStatusWidget"]   { display: none !important; visibility: hidden !important; }
 [data-testid="stToolbarActions"] { display: none !important; }
 #MainMenu                        { display: none !important; }
 footer                           { display: none !important; }
@@ -40,57 +42,26 @@ footer                           { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Kill "Manage app" bubble on mobile+desktop via parent-document JS ──
-# components.html() runs in a tiny iframe — window.parent reaches Streamlit's real DOM
+# ── JS backup via iframe → parent document (catches mobile React renders) ──
 components.html("""
 <script>
 (function() {
     function kill() {
         var doc = window.parent.document;
-
-        // 1. Known data-testid selectors
         [
-            '[data-testid="manage-app-button"]',
-            '[data-testid="stDeployButton"]',
             '[data-testid="stStatusWidget"]',
-            '[data-testid="stToolbar"]',
-            'a[href*="streamlit.io/cloud"]',
-            'a[href*="share.streamlit.io"]'
+            '[data-testid="stToolbarActions"]',
+            '[data-testid="stDeployButton"]'
         ].forEach(function(sel) {
             doc.querySelectorAll(sel).forEach(function(el) {
-                var p = el.closest('[class*="fixed"]') ||
-                        el.closest('[style*="position: fixed"]') || el;
-                p.style.cssText += 'display:none!important';
+                el.style.cssText += 'display:none!important;visibility:hidden!important';
             });
         });
-
-        // 2. Match any element whose visible text is exactly "Manage app"
-        doc.querySelectorAll('button, span, div, a').forEach(function(el) {
-            if (el.childElementCount === 0 &&
-                el.textContent.trim() === 'Manage app') {
-                var root = el;
-                // Walk up max 6 levels to find the fixed container
-                for (var i = 0; i < 6; i++) {
-                    if (!root.parentElement) break;
-                    root = root.parentElement;
-                    var cs = window.parent.getComputedStyle(root);
-                    if (cs.position === 'fixed') { break; }
-                }
-                root.style.cssText += 'display:none!important';
-            }
-        });
     }
-
-    // Run immediately, on load, and watch for React re-renders
     kill();
-    window.parent.addEventListener('load', kill);
     var obs = new MutationObserver(kill);
-    obs.observe(window.parent.document.body,
-                { childList: true, subtree: true });
-    // Extra retries for slow mobile renders
-    [300, 800, 1500, 3000, 5000].forEach(function(t) {
-        setTimeout(kill, t);
-    });
+    obs.observe(window.parent.document.body, { childList: true, subtree: true });
+    [200, 500, 1000, 2000, 4000].forEach(function(t) { setTimeout(kill, t); });
 })();
 </script>
 """, height=0)
