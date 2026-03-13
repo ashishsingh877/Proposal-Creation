@@ -412,23 +412,32 @@ disposal [EXACTLY 47 words]:
 We will verify secure deletion, destruction and anonymization of records across digital platforms, manufacturing systems, archival repositories, distributor management systems and physical documentation. Disposal workflows will be reviewed for alignment with regulatory expectations and internal EIIL data-governance guidelines to ensure safe and compliant handling of obsolete data.
 """
 
-# ── Slides 12 & 14: Compact versions of bullets 1 & 2 ────────
-# These slides have SMALLER text boxes than slide 4.
-# Original word counts: bullet1 = 32w, bullet2 = 31w.
-# Must be shorter & tighter than the slide 4 versions.
+# ── Slides 12 & 14: Compact operational bullets ──────────────
+# Slide 12: 9pt font, 264pt wide narrow box → HARD LIMIT 22 words each
+# Slide 14: 11pt font, 661pt wide box, 9 items → HARD LIMIT 28 words each
+# Both must be COMPLETE grammatical sentences ending with a full stop.
 P_S12_BULLETS = """
 Rewrite the 2 sentences below for the TARGET COMPANY.
-APPROACH: Surgically replace EIIL-specific operational terms only. Keep all other words identical.
-These are for SMALLER text boxes — must be CONCISE.
+APPROACH: Surgically replace ONLY the company-specific operational terms.
+Keep all privacy/compliance language identical.
+Sentences must be SHORT, COMPLETE and end with a full stop.
 
-STRICT WORD LIMITS: Sentence 1 = EXACTLY 32 words. Sentence 2 = EXACTLY 31 words.
+SENTENCE 1 [HARD LIMIT: MAX 22 WORDS — narrow box]:
+Original: Conduct an enterprise‑wide privacy applicability assessment and gap analysis,
+covering data discovery, lifecycle mapping, inventories, RoPA and documentation of
+internal/external data flows across EIIL's manufacturing, R&D, supply chain, commercial,
+HR and enterprise systems.
+→ Replace "EIIL's manufacturing, R&D, supply chain, commercial, HR and enterprise systems"
+  with the company's actual functions — use MAX 4-5 function names, short form.
+→ Result must be max 22 words total, complete sentence.
 
-WHAT TO REPLACE:
-- Sentence 1: "EIIL's manufacturing, R&D, supply chain, procurement, commercial, HR,
-  enterprise systems and distribution operations" → actual functions (use shorter names)
-- Sentence 2: "EIIL's manufacturing, quality, logistics, commercial, enterprise and SaaS
-  platforms" → actual platforms; "distributors, retailers, logistics partners and service
-  vendors" → actual partner types (use shorter list)
+SENTENCE 2 [HARD LIMIT: MAX 22 WORDS — narrow box]:
+Original: Assess privacy, information security and regulatory risks across EIIL's
+manufacturing, quality, logistics, commercial and SaaS platforms, including analytics
+environments, physical repositories and third-party networks.
+→ Replace "EIIL's manufacturing, quality, logistics, commercial and SaaS platforms" with
+  actual platforms — max 3-4 platform names, short form.
+→ Result must be max 22 words total, complete sentence.
 
 TARGET COMPANY PROFILE:
 Name: {company_name}, Short: {company_short}
@@ -437,11 +446,42 @@ Key functions: {key_functions}
 Key systems: {key_systems}
 Partner types: {partner_types}
 
-ORIGINALS:
-S1 [EXACTLY 32 words]: Conduct an enterprise‑wide privacy applicability assessment and gap analysis, covering data discovery, lifecycle mapping, inventories, RoPA and documentation of internal/external data flows across EIIL's manufacturing, R&D, supply chain, procurement, commercial, HR, enterprise systems and distribution operations.
-S2 [EXACTLY 31 words]: Assess privacy, information security and regulatory risks across EIIL's manufacturing, quality, logistics, commercial, enterprise and SaaS platforms, including analytics environments, physical repositories and third-party networks such as distributors, retailers, logistics partners and service vendors.
+Return exactly 2 lines. Line 1 = Sentence 1. Line 2 = Sentence 2.
+No numbering, no bullets. Both sentences must be COMPLETE and end with a full stop.
+"""
 
-Return exactly 2 lines. Line 1 = rewritten S1. Line 2 = rewritten S2. No numbering, no bullets.
+P_S14_BULLETS = """
+Rewrite the 2 sentences below for the TARGET COMPANY.
+APPROACH: Surgically replace ONLY the company-specific operational terms.
+Keep all privacy/compliance language identical.
+Sentences must be COMPLETE and end with a full stop.
+
+SENTENCE 1 [HARD LIMIT: MAX 28 WORDS]:
+Original: Conduct an enterprise‑wide privacy applicability assessment and gap analysis,
+covering data discovery, lifecycle mapping, inventories, RoPA and documentation of
+internal/external data flows across EIIL's manufacturing, R&D, supply chain, commercial,
+HR, enterprise systems and distribution operations.
+→ Replace "EIIL's manufacturing, R&D, supply chain, commercial, HR, enterprise systems
+  and distribution operations" with actual functions — max 5-6 function names.
+→ Result must be max 28 words total, complete sentence.
+
+SENTENCE 2 [HARD LIMIT: MAX 28 WORDS]:
+Original: Assess privacy, information security and regulatory risks across EIIL's
+manufacturing, quality, logistics, commercial, enterprise and SaaS platforms, including
+analytics environments, physical repositories and third-party networks.
+→ Replace "EIIL's manufacturing, quality, logistics, commercial, enterprise and SaaS
+  platforms" with actual platforms — max 4-5 platform/system names.
+→ Result must be max 28 words total, complete sentence.
+
+TARGET COMPANY PROFILE:
+Name: {company_name}, Short: {company_short}
+Industry: {industry}
+Key functions: {key_functions}
+Key systems: {key_systems}
+Partner types: {partner_types}
+
+Return exactly 2 lines. Line 1 = Sentence 1. Line 2 = Sentence 2.
+No numbering, no bullets. Both sentences must be COMPLETE and end with a full stop.
 """
 
 # ── Slide 19: Privacy Notice sentence (Rectangle 10) ─────────
@@ -758,20 +798,20 @@ def build_presentation(pptx_bytes: bytes, company_name: str,
                 set_para_text(s17, shp_name, "We will", lc[key])
 
     # ── Slides 12, 14, 19 – targeted sentence replacement ────
-    # Use dedicated compact versions (32w / 31w) generated specifically
-    # for the smaller text boxes on slides 12 and 14.
-    b1 = ai.get("s12_b1", "")
-    b2 = ai.get("s12_b2", "")
+    s12_b1     = ai.get("s12_b1", "")
+    s12_b2     = ai.get("s12_b2", "")
+    s14_b1     = ai.get("s14_b1", "")
+    s14_b2     = ai.get("s14_b2", "")
     s19_notice = ai.get("s19_notice", "")
 
-    # Fragment anchors (unique enough to find the right paragraph)
-    FRAG_B1 = "enterprise\u2011wide privacy applicability"   # non-breaking hyphen in template
-    FRAG_B1b = "enterprise-wide privacy applicability"       # regular hyphen fallback
-    FRAG_B2 = "information security and regulatory risks"
-    FRAG_NOTICE = "Privacy Notice and Consent Notice"
+    # Fragment anchors (U+2011 = non-breaking hyphen used in template)
+    FRAG_B1      = "enterprise\u2011wide privacy applicability"
+    FRAG_B1b     = "enterprise-wide privacy applicability"   # fallback
+    FRAG_B2      = "information security and regulatory risks"
+    FRAG_NOTICE  = "Privacy Notice and Consent Notice"
 
     def replace_in_slide(slide, fragment, new_text):
-        """Replace paragraph containing fragment anywhere in the slide. Returns True if found."""
+        """Replace paragraph containing fragment in any shape. Returns True if found."""
         if not new_text:
             return False
         for shape in slide.shapes:
@@ -787,16 +827,26 @@ def build_presentation(pptx_bytes: bytes, company_name: str,
                     return True
         return False
 
-    for slide_idx in [11, 13]:   # slides 12 and 14 (0-indexed)
-        if len(prs.slides) > slide_idx:
-            sl = prs.slides[slide_idx]
-            if b1:
-                if not replace_in_slide(sl, FRAG_B1, b1):
-                    replace_in_slide(sl, FRAG_B1b, b1)
-            if b2:
-                replace_in_slide(sl, FRAG_B2, b2)
+    # Slide 12 (index 11) — narrow 264pt box, 22w limit
+    if len(prs.slides) > 11:
+        sl12 = prs.slides[11]
+        if s12_b1:
+            if not replace_in_slide(sl12, FRAG_B1, s12_b1):
+                replace_in_slide(sl12, FRAG_B1b, s12_b1)
+        if s12_b2:
+            replace_in_slide(sl12, FRAG_B2, s12_b2)
 
-    if len(prs.slides) > 18 and s19_notice:   # slide 19
+    # Slide 14 (index 13) — wide 661pt box, 28w limit
+    if len(prs.slides) > 13:
+        sl14 = prs.slides[13]
+        if s14_b1:
+            if not replace_in_slide(sl14, FRAG_B1, s14_b1):
+                replace_in_slide(sl14, FRAG_B1b, s14_b1)
+        if s14_b2:
+            replace_in_slide(sl14, FRAG_B2, s14_b2)
+
+    # Slide 19 (index 18) — Privacy Notice sentence
+    if len(prs.slides) > 18 and s19_notice:
         replace_in_slide(prs.slides[18], FRAG_NOTICE, s19_notice)
 
     # ── Final pass: remove all apostrophe-space gaps in every slide ─
@@ -1014,7 +1064,7 @@ if generate_btn:
             st.warning(f"s17_lifecycle: {e}")
 
         st.write("📝 Slides 12, 14, 19 — Tailoring operational sentences…")
-        # Compact bullet versions for slides 12 & 14 (smaller boxes than slide 4)
+        # Slide 12: narrow box (264pt, 9pt font) — hard limit 22 words per sentence
         try:
             raw_s12 = groq_call(client,
                                 P_S12_BULLETS.format(company_name=company_name,
@@ -1023,15 +1073,32 @@ if generate_btn:
                                                      key_functions=key_funcs,
                                                      key_systems=key_systems,
                                                      partner_types=partner_types),
-                                max_tokens=300)
-            s12_lines = [l.strip() for l in raw_s12.strip().split("\n") if l.strip()]
-            s12_lines = [re.sub(r"^[\d]+[.)]\s*", "", l).lstrip("•–-").strip() for l in s12_lines]
-            ai["s12_b1"] = " ".join(s12_lines[0].split()[:32]) if len(s12_lines) > 0 else ""
-            ai["s12_b2"] = " ".join(s12_lines[1].split()[:31]) if len(s12_lines) > 1 else ""
+                                max_tokens=200)
+            s12_lines = [re.sub(r"^[\d]+[.)]\s*","",l).lstrip("•–-").strip()
+                         for l in raw_s12.strip().split("\n") if l.strip()]
+            ai["s12_b1"] = " ".join(s12_lines[0].split()[:22]) if len(s12_lines)>0 else ""
+            ai["s12_b2"] = " ".join(s12_lines[1].split()[:22]) if len(s12_lines)>1 else ""
         except Exception as e:
-            ai["s12_b1"] = ""
-            ai["s12_b2"] = ""
+            ai["s12_b1"] = ai["s12_b2"] = ""
             st.warning(f"s12_bullets: {e}")
+
+        # Slide 14: wide box (661pt, 11pt font) — hard limit 28 words per sentence
+        try:
+            raw_s14 = groq_call(client,
+                                P_S14_BULLETS.format(company_name=company_name,
+                                                     company_short=company_short,
+                                                     industry=industry,
+                                                     key_functions=key_funcs,
+                                                     key_systems=key_systems,
+                                                     partner_types=partner_types),
+                                max_tokens=250)
+            s14_lines = [re.sub(r"^[\d]+[.)]\s*","",l).lstrip("•–-").strip()
+                         for l in raw_s14.strip().split("\n") if l.strip()]
+            ai["s14_b1"] = " ".join(s14_lines[0].split()[:28]) if len(s14_lines)>0 else ""
+            ai["s14_b2"] = " ".join(s14_lines[1].split()[:28]) if len(s14_lines)>1 else ""
+        except Exception as e:
+            ai["s14_b1"] = ai["s14_b2"] = ""
+            st.warning(f"s14_bullets: {e}")
 
         safe("s19_notice",
              P_S19_NOTICE.format(company_name=company_name,
