@@ -413,8 +413,8 @@ We will verify secure deletion, destruction and anonymization of records across 
 """
 
 # ── Slides 12 & 14: Compact operational bullets ──────────────
-# Slide 12: 9pt font, 264pt wide narrow box → HARD LIMIT 22 words each
-# Slide 14: 11pt font, 661pt wide box, 9 items → HARD LIMIT 28 words each
+# Slide 12: 9pt font, 264pt wide box — safe limit 28 words
+# Slide 14: 11pt font, 661pt wide box — safe limit 30 words
 # Both must be COMPLETE grammatical sentences ending with a full stop.
 P_S12_BULLETS = """
 Rewrite the 2 sentences below for the TARGET COMPANY.
@@ -422,22 +422,22 @@ APPROACH: Surgically replace ONLY the company-specific operational terms.
 Keep all privacy/compliance language identical.
 Sentences must be SHORT, COMPLETE and end with a full stop.
 
-SENTENCE 1 [HARD LIMIT: MAX 22 WORDS — narrow box]:
+SENTENCE 1 [MAX 28 WORDS — complete sentence]:
 Original: Conduct an enterprise‑wide privacy applicability assessment and gap analysis,
 covering data discovery, lifecycle mapping, inventories, RoPA and documentation of
 internal/external data flows across EIIL's manufacturing, R&D, supply chain, commercial,
 HR and enterprise systems.
 → Replace "EIIL's manufacturing, R&D, supply chain, commercial, HR and enterprise systems"
   with the company's actual functions — use MAX 4-5 function names, short form.
-→ Result must be max 22 words total, complete sentence.
+→ Result: max 28 words, complete sentence.
 
-SENTENCE 2 [HARD LIMIT: MAX 22 WORDS — narrow box]:
+SENTENCE 2 [MAX 28 WORDS — complete sentence]:
 Original: Assess privacy, information security and regulatory risks across EIIL's
 manufacturing, quality, logistics, commercial and SaaS platforms, including analytics
 environments, physical repositories and third-party networks.
 → Replace "EIIL's manufacturing, quality, logistics, commercial and SaaS platforms" with
   actual platforms — max 3-4 platform names, short form.
-→ Result must be max 22 words total, complete sentence.
+→ Result: max 28 words, complete sentence.
 
 TARGET COMPANY PROFILE:
 Name: {company_name}, Short: {company_short}
@@ -456,22 +456,22 @@ APPROACH: Surgically replace ONLY the company-specific operational terms.
 Keep all privacy/compliance language identical.
 Sentences must be COMPLETE and end with a full stop.
 
-SENTENCE 1 [HARD LIMIT: MAX 28 WORDS]:
+SENTENCE 1 [MAX 30 WORDS — complete sentence]:
 Original: Conduct an enterprise‑wide privacy applicability assessment and gap analysis,
 covering data discovery, lifecycle mapping, inventories, RoPA and documentation of
 internal/external data flows across EIIL's manufacturing, R&D, supply chain, commercial,
 HR, enterprise systems and distribution operations.
 → Replace "EIIL's manufacturing, R&D, supply chain, commercial, HR, enterprise systems
   and distribution operations" with actual functions — max 5-6 function names.
-→ Result must be max 28 words total, complete sentence.
+→ Result: max 30 words, complete sentence.
 
-SENTENCE 2 [HARD LIMIT: MAX 28 WORDS]:
+SENTENCE 2 [MAX 30 WORDS — complete sentence]:
 Original: Assess privacy, information security and regulatory risks across EIIL's
 manufacturing, quality, logistics, commercial, enterprise and SaaS platforms, including
 analytics environments, physical repositories and third-party networks.
 → Replace "EIIL's manufacturing, quality, logistics, commercial, enterprise and SaaS
   platforms" with actual platforms — max 4-5 platform/system names.
-→ Result must be max 28 words total, complete sentence.
+→ Result: max 30 words, complete sentence.
 
 TARGET COMPANY PROFILE:
 Name: {company_name}, Short: {company_short}
@@ -1076,8 +1076,8 @@ if generate_btn:
                                 max_tokens=200)
             s12_lines = [re.sub(r"^[\d]+[.)]\s*","",l).lstrip("•–-").strip()
                          for l in raw_s12.strip().split("\n") if l.strip()]
-            ai["s12_b1"] = " ".join(s12_lines[0].split()[:22]) if len(s12_lines)>0 else ""
-            ai["s12_b2"] = " ".join(s12_lines[1].split()[:22]) if len(s12_lines)>1 else ""
+            ai["s12_b1"] = " ".join(s12_lines[0].split()[:28]) if len(s12_lines)>0 else ""
+            ai["s12_b2"] = " ".join(s12_lines[1].split()[:28]) if len(s12_lines)>1 else ""
         except Exception as e:
             ai["s12_b1"] = ai["s12_b2"] = ""
             st.warning(f"s12_bullets: {e}")
@@ -1094,8 +1094,8 @@ if generate_btn:
                                 max_tokens=250)
             s14_lines = [re.sub(r"^[\d]+[.)]\s*","",l).lstrip("•–-").strip()
                          for l in raw_s14.strip().split("\n") if l.strip()]
-            ai["s14_b1"] = " ".join(s14_lines[0].split()[:28]) if len(s14_lines)>0 else ""
-            ai["s14_b2"] = " ".join(s14_lines[1].split()[:28]) if len(s14_lines)>1 else ""
+            ai["s14_b1"] = " ".join(s14_lines[0].split()[:30]) if len(s14_lines)>0 else ""
+            ai["s14_b2"] = " ".join(s14_lines[1].split()[:30]) if len(s14_lines)>1 else ""
         except Exception as e:
             ai["s14_b1"] = ai["s14_b2"] = ""
             st.warning(f"s14_bullets: {e}")
@@ -1127,14 +1127,27 @@ if generate_btn:
 
     # ── Preview ──────────────────────────────────────────────
     with st.expander("🔍 Preview AI-generated content"):
-        st.markdown("**Extracted Business Model (used in Slides 4 & 11):**")
-        st.success(ai.get("biz_model", ""))
+        if ai.get("profile"):
+            p = ai["profile"]
+            st.markdown("**🏢 Extracted Company Profile:**")
+            st.markdown(f"""
+| Field | Value |
+|---|---|
+| **Industry** | {p.get('industry','')} |
+| **Business Model** | {p.get('business_model','')} |
+| **Service Lines** | {p.get('service_lines','')} |
+| **Key Sectors** | {p.get('key_sectors','')} |
+| **Key Functions** | {p.get('key_functions','')} |
+| **Key Systems** | {p.get('key_systems','')} |
+| **Data Types** | {p.get('data_types','')} |
+| **Partner Types** | {p.get('partner_types','')} |
+| **Geography** | {p.get('geographic_footprint','')} |
+| **Channel** | {p.get('channel_description','')} |
+""")
         st.markdown("**Slide 4 – Company Description:**")
         st.info(ai.get("s4_desc", ""))
-        st.markdown("**Slide 4 – Scope Paragraph:**")
-        if ai.get("profile"):
-            st.markdown("**🏢 Extracted Company Profile:**")
-            st.json(ai["profile"])
+        st.markdown("**Slide 4 – Scope Operations Phrase:**")
+        st.info(ai.get("s4_ops", ""))
         if ai.get("s4_bullets"):
             st.markdown("**Slide 4 – Scope Bullets (Left):**")
             for b in ai["s4_bullets"]:
