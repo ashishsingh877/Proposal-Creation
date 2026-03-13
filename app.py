@@ -413,31 +413,37 @@ We will verify secure deletion, destruction and anonymization of records across 
 """
 
 # ── Slides 12 & 14: Compact operational bullets ──────────────
-# Slide 12: 9pt font, 264pt wide box — safe limit 28 words
-# Slide 14: 11pt font, 661pt wide box — safe limit 30 words
-# Both must be COMPLETE grammatical sentences ending with a full stop.
+# Slide 12: 9pt font, 264pt wide box — 32 words (matches original capacity)
+# Slide 14: 11pt font, 661pt wide box — 30 words
+# PURPOSE: Slide 12 is the CLIENT-FACING SCOPE SUMMARY. Clients read this to understand
+# EXACTLY which departments, applications and business functions will be assessed.
+# Be SPECIFIC — name real departments, real systems, real business units.
 P_S12_BULLETS = """
-Rewrite the 2 sentences below for the TARGET COMPANY.
-APPROACH: Surgically replace ONLY the company-specific operational terms.
-Keep all privacy/compliance language identical.
-Sentences must be SHORT, COMPLETE and end with a full stop.
+You are rewriting 2 key scope sentences for a client-facing consulting proposal slide.
+This is the most important slide for scope clarity — the client reads these sentences
+to understand EXACTLY which departments, systems and business functions will be assessed.
 
-SENTENCE 1 [MAX 28 WORDS — complete sentence]:
-Original: Conduct an enterprise‑wide privacy applicability assessment and gap analysis,
+APPROACH: Surgically replace the EIIL-specific operational terms with accurate, SPECIFIC
+equivalents for the target company. Keep all privacy/compliance language IDENTICAL.
+Be SPECIFIC — name actual departments, business units and systems, not generic terms.
+
+SENTENCE 1 [MAX 32 WORDS — must be complete, specific, end with full stop]:
+Original: Conduct an enterprise-wide privacy applicability assessment and gap analysis,
 covering data discovery, lifecycle mapping, inventories, RoPA and documentation of
 internal/external data flows across EIIL's manufacturing, R&D, supply chain, commercial,
-HR and enterprise systems.
-→ Replace "EIIL's manufacturing, R&D, supply chain, commercial, HR and enterprise systems"
-  with the company's actual functions — use MAX 4-5 function names, short form.
-→ Result: max 28 words, complete sentence.
+HR, enterprise systems and distribution operations.
+→ Replace the operations list with: {company_short}'s actual KEY FUNCTIONS and DEPARTMENTS
+  (use 5-6 specific names from the profile, comma-separated, end with "and [last item].")
+→ These are the departments the client will know will be in scope.
 
-SENTENCE 2 [MAX 28 WORDS — complete sentence]:
+SENTENCE 2 [MAX 32 WORDS — must be complete, specific, end with full stop]:
 Original: Assess privacy, information security and regulatory risks across EIIL's
-manufacturing, quality, logistics, commercial and SaaS platforms, including analytics
-environments, physical repositories and third-party networks.
-→ Replace "EIIL's manufacturing, quality, logistics, commercial and SaaS platforms" with
-  actual platforms — max 3-4 platform names, short form.
-→ Result: max 28 words, complete sentence.
+manufacturing, quality, logistics, commercial, enterprise and SaaS platforms, including
+analytics environments, physical repositories and third-party networks such as distributors,
+retailers, logistics partners and service vendors.
+→ Replace with: {company_short}'s actual KEY SYSTEMS and PLATFORMS (4-5 specific names)
+  and actual PARTNER TYPES (2-3 specific types).
+→ These tell the client which systems and third parties are in scope.
 
 TARGET COMPANY PROFILE:
 Name: {company_name}, Short: {company_short}
@@ -445,9 +451,10 @@ Industry: {industry}
 Key functions: {key_functions}
 Key systems: {key_systems}
 Partner types: {partner_types}
+Service lines: {service_lines}
 
 Return exactly 2 lines. Line 1 = Sentence 1. Line 2 = Sentence 2.
-No numbering, no bullets. Both sentences must be COMPLETE and end with a full stop.
+No numbering, no bullets. Both COMPLETE sentences ending with a full stop.
 """
 
 P_S14_BULLETS = """
@@ -1072,12 +1079,13 @@ if generate_btn:
                                                      industry=industry,
                                                      key_functions=key_funcs,
                                                      key_systems=key_systems,
-                                                     partner_types=partner_types),
-                                max_tokens=200)
+                                                     partner_types=partner_types,
+                                                     service_lines=svc_lines),
+                                max_tokens=250)
             s12_lines = [re.sub(r"^[\d]+[.)]\s*","",l).lstrip("•–-").strip()
                          for l in raw_s12.strip().split("\n") if l.strip()]
-            ai["s12_b1"] = " ".join(s12_lines[0].split()[:28]) if len(s12_lines)>0 else ""
-            ai["s12_b2"] = " ".join(s12_lines[1].split()[:28]) if len(s12_lines)>1 else ""
+            ai["s12_b1"] = " ".join(s12_lines[0].split()[:32]) if len(s12_lines)>0 else ""
+            ai["s12_b2"] = " ".join(s12_lines[1].split()[:32]) if len(s12_lines)>1 else ""
         except Exception as e:
             ai["s12_b1"] = ai["s12_b2"] = ""
             st.warning(f"s12_bullets: {e}")
