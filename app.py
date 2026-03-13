@@ -412,6 +412,38 @@ disposal [EXACTLY 47 words]:
 We will verify secure deletion, destruction and anonymization of records across digital platforms, manufacturing systems, archival repositories, distributor management systems and physical documentation. Disposal workflows will be reviewed for alignment with regulatory expectations and internal EIIL data-governance guidelines to ensure safe and compliant handling of obsolete data.
 """
 
+# ── Slides 12 & 14: Compact versions of bullets 1 & 2 ────────
+# These slides have SMALLER text boxes than slide 4.
+# Original word counts: bullet1 = 32w, bullet2 = 31w.
+# Must be shorter & tighter than the slide 4 versions.
+P_S12_BULLETS = """
+Rewrite the 2 sentences below for the TARGET COMPANY.
+APPROACH: Surgically replace EIIL-specific operational terms only. Keep all other words identical.
+These are for SMALLER text boxes — must be CONCISE.
+
+STRICT WORD LIMITS: Sentence 1 = EXACTLY 32 words. Sentence 2 = EXACTLY 31 words.
+
+WHAT TO REPLACE:
+- Sentence 1: "EIIL's manufacturing, R&D, supply chain, procurement, commercial, HR,
+  enterprise systems and distribution operations" → actual functions (use shorter names)
+- Sentence 2: "EIIL's manufacturing, quality, logistics, commercial, enterprise and SaaS
+  platforms" → actual platforms; "distributors, retailers, logistics partners and service
+  vendors" → actual partner types (use shorter list)
+
+TARGET COMPANY PROFILE:
+Name: {company_name}, Short: {company_short}
+Industry: {industry}
+Key functions: {key_functions}
+Key systems: {key_systems}
+Partner types: {partner_types}
+
+ORIGINALS:
+S1 [EXACTLY 32 words]: Conduct an enterprise‑wide privacy applicability assessment and gap analysis, covering data discovery, lifecycle mapping, inventories, RoPA and documentation of internal/external data flows across EIIL's manufacturing, R&D, supply chain, procurement, commercial, HR, enterprise systems and distribution operations.
+S2 [EXACTLY 31 words]: Assess privacy, information security and regulatory risks across EIIL's manufacturing, quality, logistics, commercial, enterprise and SaaS platforms, including analytics environments, physical repositories and third-party networks such as distributors, retailers, logistics partners and service vendors.
+
+Return exactly 2 lines. Line 1 = rewritten S1. Line 2 = rewritten S2. No numbering, no bullets.
+"""
+
 # ── Slide 19: Privacy Notice sentence (Rectangle 10) ─────────
 P_S19_NOTICE = """
 Rewrite the sentence below for the TARGET COMPANY. Replace ONLY the list of departments/
@@ -726,11 +758,10 @@ def build_presentation(pptx_bytes: bytes, company_name: str,
                 set_para_text(s17, shp_name, "We will", lc[key])
 
     # ── Slides 12, 14, 19 – targeted sentence replacement ────
-    # Bullet 1 & 2 from slide 4 are the SAME sentences that appear on
-    # slides 12 and 14. Reuse them. Also tailor the slide 19 notice sentence.
-    bullets = ai.get("s4_bullets", [])
-    b1 = bullets[0] if len(bullets) > 0 else ""  # enterprise-wide gap analysis sentence
-    b2 = bullets[1] if len(bullets) > 1 else ""  # privacy/security risk sentence
+    # Use dedicated compact versions (32w / 31w) generated specifically
+    # for the smaller text boxes on slides 12 and 14.
+    b1 = ai.get("s12_b1", "")
+    b2 = ai.get("s12_b2", "")
     s19_notice = ai.get("s19_notice", "")
 
     # Fragment anchors (unique enough to find the right paragraph)
@@ -983,6 +1014,25 @@ if generate_btn:
             st.warning(f"s17_lifecycle: {e}")
 
         st.write("📝 Slides 12, 14, 19 — Tailoring operational sentences…")
+        # Compact bullet versions for slides 12 & 14 (smaller boxes than slide 4)
+        try:
+            raw_s12 = groq_call(client,
+                                P_S12_BULLETS.format(company_name=company_name,
+                                                     company_short=company_short,
+                                                     industry=industry,
+                                                     key_functions=key_funcs,
+                                                     key_systems=key_systems,
+                                                     partner_types=partner_types),
+                                max_tokens=300)
+            s12_lines = [l.strip() for l in raw_s12.strip().split("\n") if l.strip()]
+            s12_lines = [re.sub(r"^[\d]+[.)]\s*", "", l).lstrip("•–-").strip() for l in s12_lines]
+            ai["s12_b1"] = " ".join(s12_lines[0].split()[:32]) if len(s12_lines) > 0 else ""
+            ai["s12_b2"] = " ".join(s12_lines[1].split()[:31]) if len(s12_lines) > 1 else ""
+        except Exception as e:
+            ai["s12_b1"] = ""
+            ai["s12_b2"] = ""
+            st.warning(f"s12_bullets: {e}")
+
         safe("s19_notice",
              P_S19_NOTICE.format(company_name=company_name,
                                  company_short=company_short,
