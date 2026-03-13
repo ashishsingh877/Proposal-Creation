@@ -1038,7 +1038,10 @@ if generate_btn:
         if ai.get("s11"):
             words = ai["s11"].split()
             if len(words) > 82:
-                ai["s11"] = " ".join(words[:82])
+                # Cut at last full stop within 82 words, never mid-sentence
+                candidate = " ".join(words[:82])
+                last_dot = candidate.rfind('.')
+                ai["s11"] = candidate[:last_dot + 1].strip() if last_dot > 0 else candidate + '.'
 
         st.write("📝 Slide 17 — Data Lifecycle (6 sections)…")
         S17_LIMITS = {
@@ -1071,7 +1074,38 @@ if generate_btn:
             st.warning(f"s17_lifecycle: {e}")
 
         st.write("📝 Slides 12, 14, 19 — Tailoring operational sentences…")
-        # Slide 12: narrow box (264pt, 9pt font) — hard limit 22 words per sentence
+
+        def smart_trim(text: str, max_words: int) -> str:
+            """
+            Trim text to max_words but ALWAYS end at a complete sentence or clause.
+            Never cuts mid-sentence. Priority order:
+            1. If text fits within max_words → return as-is (ensure ends with '.')
+            2. Find the last full stop (.) before the word limit → cut there
+            3. Find the last comma before the word limit → cut there, add '.'
+            4. Hard cut at max_words, add '.'
+            """
+            words = text.split()
+            if len(words) <= max_words:
+                t = " ".join(words)
+                return t if t.endswith('.') else t.rstrip(',') + '.'
+
+            # Rebuild within limit
+            candidate = " ".join(words[:max_words])
+
+            # Try to find last full stop within candidate
+            last_dot = candidate.rfind('.')
+            if last_dot > len(candidate) * 0.5:   # dot is at least halfway through
+                return candidate[:last_dot + 1].strip()
+
+            # Try last comma (end of a clause)
+            last_comma = candidate.rfind(',')
+            if last_comma > len(candidate) * 0.4:
+                return candidate[:last_comma].strip() + '.'
+
+            # Hard cut — at least add a period
+            return candidate.rstrip(',').rstrip() + '.'
+
+        # Slide 12: narrow box (264pt, 9pt font) — 32 word capacity
         try:
             raw_s12 = groq_call(client,
                                 P_S12_BULLETS.format(company_name=company_name,
@@ -1084,8 +1118,8 @@ if generate_btn:
                                 max_tokens=250)
             s12_lines = [re.sub(r"^[\d]+[.)]\s*","",l).lstrip("•–-").strip()
                          for l in raw_s12.strip().split("\n") if l.strip()]
-            ai["s12_b1"] = " ".join(s12_lines[0].split()[:32]) if len(s12_lines)>0 else ""
-            ai["s12_b2"] = " ".join(s12_lines[1].split()[:32]) if len(s12_lines)>1 else ""
+            ai["s12_b1"] = smart_trim(s12_lines[0], 32) if len(s12_lines)>0 else ""
+            ai["s12_b2"] = smart_trim(s12_lines[1], 32) if len(s12_lines)>1 else ""
         except Exception as e:
             ai["s12_b1"] = ai["s12_b2"] = ""
             st.warning(f"s12_bullets: {e}")
@@ -1102,8 +1136,8 @@ if generate_btn:
                                 max_tokens=250)
             s14_lines = [re.sub(r"^[\d]+[.)]\s*","",l).lstrip("•–-").strip()
                          for l in raw_s14.strip().split("\n") if l.strip()]
-            ai["s14_b1"] = " ".join(s14_lines[0].split()[:30]) if len(s14_lines)>0 else ""
-            ai["s14_b2"] = " ".join(s14_lines[1].split()[:30]) if len(s14_lines)>1 else ""
+            ai["s14_b1"] = smart_trim(s14_lines[0], 30) if len(s14_lines)>0 else ""
+            ai["s14_b2"] = smart_trim(s14_lines[1], 30) if len(s14_lines)>1 else ""
         except Exception as e:
             ai["s14_b1"] = ai["s14_b2"] = ""
             st.warning(f"s14_bullets: {e}")
