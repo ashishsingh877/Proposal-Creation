@@ -391,24 +391,29 @@ Geographic footprint: {geographic_footprint}
 Return JSON keys: "collection","use_processing","storage","sharing","retention","disposal"
 Value = paragraph text ONLY (no title, no number). ONLY valid JSON. No markdown fences.
 
+IMPORTANT: The replacement terms for this company are LONGER than the original FMCG terms.
+To fit the same fixed text boxes, write FEWER words than the originals shown below.
+Target word counts are LOWER than the originals — stay within these limits:
+collection=46w, use_processing=48w, storage=36w, sharing=27w, retention=33w, disposal=35w
+
 ORIGINALS — surgical replacement only, keep all other words IDENTICAL:
 
-collection [EXACTLY 61 words]:
+collection [TARGET: 46 words — keep sentence complete]:
 We will review how Eveready Industries India Ltd. (EIIL) collects personal, operational and regulatory data across functions such as employee onboarding; manufacturing processes for batteries, flashlights and lighting products; distributor onboarding; sales operations; supply-chain coordination; and customer service requirements. This includes data captured through ERP systems, plant-level manufacturing systems, distribution platforms, logistics systems and digital interfaces used across EIIL's nationwide network.
 
-use_processing [EXACTLY 64 words]:
+use_processing [TARGET: 48 words — keep sentence complete]:
 We will assess how collected data is used for manufacturing planning, quality control, inventory management, supply chain coordination, compliance reporting and performance monitoring across EIIL's key segments: batteries, flashlights, consumer lighting, professional lighting and electrical accessories. This includes data integration across systems such as ERP, CRM, distributor management systems and plant-level automation platforms, along with tools supporting R&D operations, workforce management and operational efficiency.
 
-storage [EXACTLY 48 words]:
+storage [TARGET: 36 words — keep sentence complete]:
 We will examine secure storage of manufacturing, safety, employee and vendor data across cloud platforms, on-premise servers at EIIL's manufacturing units, validated production systems, backup systems and R&D repositories. Controls for authentication, role-based access, audit trails and compliance with applicable industry and corporate guidelines will also be reviewed.
 
-sharing [EXACTLY 36 words]:
+sharing [TARGET: 27 words — keep sentence complete]:
 We will evaluate data-sharing practices with distributors, logistics partners, manufacturing vendors, regulatory authorities, retailers and internal teams. This includes reviewing contractual safeguards, supply-chain data-processing requirements, cross-border data transfer practices (where applicable), anonymization procedures and security measures.
 
-retention [EXACTLY 43 words]:
+retention [TARGET: 33 words — keep sentence complete]:
 We will review retention policies for manufacturing logs, quality-control reports, product testing data, R&D records, HR and payroll files, vendor documentation, distributor agreements, operational logs and financial documentation. Retention requirements will be assessed against regulatory mandates, audit requirements and internal EIIL governance policies.
 
-disposal [EXACTLY 47 words]:
+disposal [TARGET: 35 words — keep sentence complete]:
 We will verify secure deletion, destruction and anonymization of records across digital platforms, manufacturing systems, archival repositories, distributor management systems and physical documentation. Disposal workflows will be reviewed for alignment with regulatory expectations and internal EIIL data-governance guidelines to ensure safe and compliant handling of obsolete data.
 """
 
@@ -1044,9 +1049,16 @@ if generate_btn:
                 ai["s11"] = candidate[:last_dot + 1].strip() if last_dot > 0 else candidate + '.'
 
         st.write("📝 Slide 17 — Data Lifecycle (6 sections)…")
+        # Word limits REDUCED ~25% from originals to account for longer tech/company terms
+        # Original FMCG terms avg 4-5 chars; AI-generated terms avg 8-10 chars → same
+        # word count overflows box. Reduced limits ensure text always fits completely.
         S17_LIMITS = {
-            "collection": 61, "use_processing": 64, "storage": 48,
-            "sharing": 36, "retention": 43, "disposal": 47,
+            "collection":    46,   # was 61
+            "use_processing": 48,  # was 64
+            "storage":       36,   # was 48
+            "sharing":       27,   # was 36
+            "retention":     33,   # was 43
+            "disposal":      35,   # was 47
         }
         try:
             raw17 = groq_call(client,
@@ -1064,11 +1076,25 @@ if generate_btn:
             raw17 = re.sub(r"^```(?:json)?", "", raw17).strip()
             raw17 = re.sub(r"```$", "", raw17).strip()
             ai["s17_lifecycle"] = json.loads(raw17)
+            # Use smart_trim (defined below) — cuts at last complete clause, never mid-sentence
+            # smart_trim is defined in the slides 12/14 block; apply same logic inline here
             for k, limit in S17_LIMITS.items():
                 if k in ai["s17_lifecycle"]:
-                    words = ai["s17_lifecycle"][k].split()
-                    if len(words) > limit:
-                        ai["s17_lifecycle"][k] = " ".join(words[:limit])
+                    text = ai["s17_lifecycle"][k]
+                    words = text.split()
+                    if len(words) <= limit:
+                        ai["s17_lifecycle"][k] = text if text.endswith('.') else text.rstrip(',') + '.'
+                    else:
+                        candidate = " ".join(words[:limit])
+                        last_dot = candidate.rfind('.')
+                        if last_dot > len(candidate) * 0.5:
+                            ai["s17_lifecycle"][k] = candidate[:last_dot + 1].strip()
+                        else:
+                            last_comma = candidate.rfind(',')
+                            if last_comma > len(candidate) * 0.4:
+                                ai["s17_lifecycle"][k] = candidate[:last_comma].strip() + '.'
+                            else:
+                                ai["s17_lifecycle"][k] = candidate.rstrip(',') + '.'
         except Exception as e:
             ai["s17_lifecycle"] = {}
             st.warning(f"s17_lifecycle: {e}")
