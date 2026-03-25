@@ -415,24 +415,24 @@ event handling, HR operations, payroll processing, and overall business performa
 This includes data integration across systems such as SAP, LIMS, QMS, CRM, and HRMS, along
 with tools supporting regulatory submissions, operational efficiency, and workforce management.
 
-storage [~47 words]:
+storage [~55 words]:
 We will examine secure storage of R&D, clinical, manufacturing, patient safety, employee,
 and vendor data across cloud platforms, on-premise servers, laboratory instruments, backup
 systems, and validated pharmaceutical applications. Controls for encryption, authentication,
 audit trails, role-based access, and compliance with data integrity guidelines will also be reviewed.
 
-sharing [~34 words]:
+sharing [~55 words]:
 We will evaluate data-sharing practices with research partners, CROs, regulatory authorities,
 manufacturing vendors, healthcare professionals and internal teams. This includes reviewing
 contractual safeguards, data-processing agreements, cross-border data transfer controls,
 anonymization practices, and security measures.
 
-retention [~30 words]:
+retention [~55 words]:
 We will review retention policies for clinical trial documents, quality and batch records,
 manufacturing logs, pharmacovigilance data, HR and payroll files, medical reports, vendor
 documentation, and operational logs.
 
-disposal [~47 words]:
+disposal [~55 words]:
 We will verify secure deletion, destruction, and anonymization of records across digital
 platforms, validated systems, cloud repositories, archival databases, and physical documentation.
 Disposal workflows will be reviewed for alignment with regulatory expectations, audit
@@ -443,22 +443,22 @@ NOW REWRITE EACH SECTION FOR THE TARGET COMPANY using the same structure and den
 
 ORIGINALS — surgical replacement only, keep all other words IDENTICAL:
 
-collection [TARGET: 46 words — keep sentence complete]:
+collection [TARGET: 55 words — keep sentence complete]:
 We will review how Eveready Industries India Ltd. (EIIL) collects personal, operational and regulatory data across functions such as employee onboarding; manufacturing processes for batteries, flashlights and lighting products; distributor onboarding; sales operations; supply-chain coordination; and customer service requirements. This includes data captured through ERP systems, plant-level manufacturing systems, distribution platforms, logistics systems and digital interfaces used across EIIL's nationwide network.
 
-use_processing [TARGET: 48 words — keep sentence complete]:
+use_processing [TARGET: 55 words — keep sentence complete]:
 We will assess how collected data is used for manufacturing planning, quality control, inventory management, supply chain coordination, compliance reporting and performance monitoring across EIIL's key segments: batteries, flashlights, consumer lighting, professional lighting and electrical accessories. This includes data integration across systems such as ERP, CRM, distributor management systems and plant-level automation platforms, along with tools supporting R&D operations, workforce management and operational efficiency.
 
-storage [TARGET: 36 words — keep sentence complete]:
+storage [TARGET: 55 words — keep sentence complete]:
 We will examine secure storage of manufacturing, safety, employee and vendor data across cloud platforms, on-premise servers at EIIL's manufacturing units, validated production systems, backup systems and R&D repositories. Controls for authentication, role-based access, audit trails and compliance with applicable industry and corporate guidelines will also be reviewed.
 
-sharing [TARGET: 27 words — keep sentence complete]:
+sharing [TARGET: 55 words — keep sentence complete]:
 We will evaluate data-sharing practices with distributors, logistics partners, manufacturing vendors, regulatory authorities, retailers and internal teams. This includes reviewing contractual safeguards, supply-chain data-processing requirements, cross-border data transfer practices (where applicable), anonymization procedures and security measures.
 
-retention [TARGET: 33 words — keep sentence complete]:
+retention [TARGET: 55 words — keep sentence complete]:
 We will review retention policies for manufacturing logs, quality-control reports, product testing data, R&D records, HR and payroll files, vendor documentation, distributor agreements, operational logs and financial documentation. Retention requirements will be assessed against regulatory mandates, audit requirements and internal EIIL governance policies.
 
-disposal [TARGET: 35 words — keep sentence complete]:
+disposal [TARGET: 55 words — keep sentence complete]:
 We will verify secure deletion, destruction and anonymization of records across digital platforms, manufacturing systems, archival repositories, distributor management systems and physical documentation. Disposal workflows will be reviewed for alignment with regulatory expectations and internal EIIL data-governance guidelines to ensure safe and compliant handling of obsolete data.
 """
 
