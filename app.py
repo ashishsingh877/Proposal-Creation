@@ -392,9 +392,54 @@ Return JSON keys: "collection","use_processing","storage","sharing","retention",
 Value = paragraph text ONLY (no title, no number). ONLY valid JSON. No markdown fences.
 
 IMPORTANT: The replacement terms for this company are LONGER than the original FMCG terms.
-To fit the same fixed text boxes, write FEWER words than the originals shown below.
-Target word counts are LOWER than the originals — stay within these limits:
-collection=46w, use_processing=48w, storage=36w, sharing=27w, retention=33w, disposal=35w
+Write content that is SPECIFIC and RICH — name actual functions, systems, data types and
+partner types from the profile. Aim for the word counts below which are calibrated to fill
+the fixed text boxes with the right density of information (not too sparse, not overflowing).
+
+Target word counts (write content that is close to these — do not go over):
+collection=55w, use_processing=60w, storage=47w, sharing=34w, retention=30w, disposal=47w
+
+REFERENCE EXAMPLE (INTAS Pharmaceuticals — this quality and density is what we want):
+
+collection [~55 words]:
+We will review how INTAS collects personal, operational, and regulatory data across functions
+such as employee onboarding, clinical trial enrollment, pharmacovigilance reporting,
+manufacturing processes, supplier onboarding, sales operations, and healthcare professional
+(HCP) interactions. This includes consent capture mechanisms, digital forms, laboratory
+systems (LIMS), HR systems, quality systems, and data gathered through ERP and MES platforms.
+
+use_processing [~60 words]:
+We will assess how collected data is used for R&D activities, clinical trial management,
+batch production, quality control, supply chain coordination, compliance reporting, adverse
+event handling, HR operations, payroll processing, and overall business performance monitoring.
+This includes data integration across systems such as SAP, LIMS, QMS, CRM, and HRMS, along
+with tools supporting regulatory submissions, operational efficiency, and workforce management.
+
+storage [~47 words]:
+We will examine secure storage of R&D, clinical, manufacturing, patient safety, employee,
+and vendor data across cloud platforms, on-premise servers, laboratory instruments, backup
+systems, and validated pharmaceutical applications. Controls for encryption, authentication,
+audit trails, role-based access, and compliance with data integrity guidelines will also be reviewed.
+
+sharing [~34 words]:
+We will evaluate data-sharing practices with research partners, CROs, regulatory authorities,
+manufacturing vendors, healthcare professionals and internal teams. This includes reviewing
+contractual safeguards, data-processing agreements, cross-border data transfer controls,
+anonymization practices, and security measures.
+
+retention [~30 words]:
+We will review retention policies for clinical trial documents, quality and batch records,
+manufacturing logs, pharmacovigilance data, HR and payroll files, medical reports, vendor
+documentation, and operational logs.
+
+disposal [~47 words]:
+We will verify secure deletion, destruction, and anonymization of records across digital
+platforms, validated systems, cloud repositories, archival databases, and physical documentation.
+Disposal workflows will be reviewed for alignment with regulatory expectations, audit
+requirements, and internal governance policies to ensure safe and compliant handling of
+obsolete data.
+
+NOW REWRITE EACH SECTION FOR THE TARGET COMPANY using the same structure and density:
 
 ORIGINALS — surgical replacement only, keep all other words IDENTICAL:
 
@@ -1049,16 +1094,15 @@ if generate_btn:
                 ai["s11"] = candidate[:last_dot + 1].strip() if last_dot > 0 else candidate + '.'
 
         st.write("📝 Slide 17 — Data Lifecycle (6 sections)…")
-        # Word limits REDUCED ~25% from originals to account for longer tech/company terms
-        # Original FMCG terms avg 4-5 chars; AI-generated terms avg 8-10 chars → same
-        # word count overflows box. Reduced limits ensure text always fits completely.
+        # Word limits calibrated against INTAS reference (snap 2) — verified to fill boxes
+        # without overflow. Character analysis shows boxes have ample capacity at these counts.
         S17_LIMITS = {
-            "collection":    46,   # was 61
-            "use_processing": 48,  # was 64
-            "storage":       36,   # was 48
-            "sharing":       27,   # was 36
-            "retention":     33,   # was 43
-            "disposal":      35,   # was 47
+            "collection":    55,   # INTAS ref = 55w ✓
+            "use_processing": 60,  # INTAS ref = 60w ✓
+            "storage":       47,   # INTAS ref = 47w ✓
+            "sharing":       34,   # INTAS ref = 38w, reduced 4w to prevent logo overlap
+            "retention":     30,   # INTAS ref = 28w, slight buffer
+            "disposal":      47,   # INTAS ref = 47w ✓
         }
         try:
             raw17 = groq_call(client,
