@@ -320,7 +320,7 @@ Deliver a risk prioritized remediation roadmap and support governance enablement
 # ── Slide 11: Operating model paragraph ──────────────────────
 P_S11 = """
 You are rewriting one paragraph for a professional consulting proposal.
-The text box is FIXED size — EXACTLY 82 words required.
+The text box is FIXED size — EXACTLY 85 words required.
 
 APPROACH: Rewrite the ORIGINAL by replacing EIIL/Eveready-specific operational terms ONLY.
 Keep EVERY other word IDENTICAL to the original. Maintain exact sentence structure.
@@ -345,7 +345,7 @@ Key functions: {key_functions}
 Geographic footprint: {geographic_footprint}
 Channel description: {channel_description}
 
-ORIGINAL (82 words — replace marked terms ONLY, keep all else word for word):
+ORIGINAL (85 words — replace marked terms ONLY, keep all else word for word):
 For this engagement, the privacy compliance model will be applied exclusively to the internal
 functions, processes and governance structures of Eveready Industries India Ltd., supporting
 its manufacturing, supply-chain, commercial, distribution and corporate operations, which
@@ -355,21 +355,31 @@ approach ensures a focused effort on strengthening EIIL's internal privacy gover
 compliance capabilities, aligned with applicable regulatory requirements, its operating model
 and its nationwide operational footprint.
 
-Return ONLY the paragraph. EXACTLY 82 words. No labels, no quotes.
+Return ONLY the paragraph. EXACTLY 85 words. No labels, no quotes.
 """
 
 # ── Slide 17: Data Lifecycle ──────────────────────────────────
+# Each section has: P0 (bold title, never touch) + P1 (body, AI-generated)
+# Box dimensions: collection=360x127pt, use_processing=273x167pt, storage=279x127pt,
+#                 sharing=397x87pt, retention=355x101pt, disposal=301x127pt — all 11pt font
 P_S17 = """
 You are writing 6 Data Lifecycle paragraphs for a professional consulting proposal.
-Each paragraph goes into a FIXED-SIZE text box.
+Each paragraph fills a FIXED-SIZE text box on a slide — completeness and tone matter most.
 
-CRITICAL RULE: Do NOT use any Eveready/EIIL content — no batteries, flashlights,
-manufacturing units, distributor management systems, plant-level systems or logistics
-terms unless the target company actually operates in those industries.
+TONE REFERENCE (copy this professional consulting tone — NOT the content):
+The original template uses this style:
+"We will review how [Company] collects personal, operational and regulatory data across
+functions such as [function 1]; [function 2]; [function 3]; and [function 4]. This includes
+data captured through [system 1], [system 2], [system 3] and [system 4] used across
+[Company's] [geography] network."
 
-APPROACH: Use the INTAS REFERENCE EXAMPLE below as your structural template.
-Follow its sentence structure and flow. Replace INTAS-specific terms with accurate
-equivalents for the TARGET COMPANY from the profile provided.
+CRITICAL RULES:
+1. Write in EXACTLY that consulting tone — formal, specific, action-oriented ("We will...")
+2. Use ONLY information from the TARGET COMPANY PROFILE — not Eveready, not INTAS
+3. NEVER use: batteries, flashlights, plant-level, distributor management systems,
+   logistics systems, manufacturing units, EIIL — these are Eveready-specific
+4. Name ACTUAL functions, systems, data types and partner types from the profile
+5. Every paragraph must be a COMPLETE sentence — no truncation
 
 TARGET COMPANY PROFILE:
 Name: {company_name}, Short: {company_short}
@@ -381,61 +391,50 @@ Data types: {data_types}
 Partner types: {partner_types}
 Geographic footprint: {geographic_footprint}
 
-Return JSON keys: "collection","use_processing","storage","sharing","retention","disposal"
-Value = paragraph text ONLY (no title, no number). ONLY valid JSON. No markdown fences.
+Return JSON with keys: "collection","use_processing","storage","sharing","retention","disposal"
+Values = body paragraph text ONLY (no bold title, no section number).
+ONLY valid JSON. No markdown fences.
 
-Target word counts (stay within these):
-collection=55w, use_processing=60w, storage=47w, sharing=34w, retention=30w, disposal=47w
+Target word counts (stay close — complete sentences always priority over word count):
+collection=55w, use_processing=58w, storage=45w, sharing=34w, retention=38w, disposal=45w
 
-INTAS REFERENCE — follow this STRUCTURE, replace INTAS-specific terms with target company terms:
+WRITE EACH SECTION as follows (replace [placeholders] with actual company data):
 
-collection [~55 words]:
-We will review how INTAS collects personal, operational and regulatory data across functions
-such as employee onboarding; clinical trial enrollment; pharmacovigilance reporting;
-manufacturing processes; supplier onboarding; sales operations; and healthcare professional
-(HCP) interactions. This includes data captured through consent capture mechanisms, digital
-forms, laboratory systems (LIMS), HR systems, quality systems and data gathered through
-ERP and MES platforms.
+collection: "We will review how {company_name} ({company_short}) collects personal,
+operational and regulatory data across functions such as [function 1]; [function 2];
+[function 3]; [function 4]; and [function 5]. This includes data captured through
+[system 1], [system 2], [system 3] and [system 4] used across {company_short}'s
+[geographic footprint]."
 
-use_processing [~60 words]:
-We will assess how collected data is used for R&D activities, clinical trial management,
-batch production, quality control, supply chain coordination, compliance reporting, adverse
-event handling, HR operations, payroll processing and overall business performance monitoring
-across INTAS's key segments. This includes data integration across systems such as SAP, LIMS,
-QMS, CRM and HRMS, along with tools supporting regulatory submissions, operational efficiency
-and workforce management.
+use_processing: "We will assess how collected data is used for [use-case 1], [use-case 2],
+[use-case 3], [use-case 4] and [use-case 5] across {company_short}'s key [service lines
+or segments]. This includes data integration across systems such as [system 1], [system 2]
+and [system 3], along with tools supporting [function 1], [function 2] and [function 3]."
 
-storage [~47 words]:
-We will examine secure storage of R&D, clinical, manufacturing, patient safety, employee and
-vendor data across cloud platforms, on-premise servers, laboratory instruments, backup systems
-and validated pharmaceutical applications. Controls for encryption, authentication, audit
-trails, role-based access and compliance with applicable data integrity guidelines will also
-be reviewed.
+storage: "We will examine secure storage of [data type 1], [data type 2] and [data type 3]
+across cloud platforms, on-premise servers at {company_short}'s [locations], validated
+[system types], backup systems and [relevant repositories]. Controls for authentication,
+role-based access, audit trails and compliance with applicable industry and corporate
+guidelines will also be reviewed."
 
-sharing [~34 words]:
-We will evaluate data-sharing practices with research partners, CROs, regulatory authorities,
-manufacturing vendors, healthcare professionals and internal teams. This includes reviewing
-contractual safeguards, data-processing agreements, cross-border data transfer controls,
-anonymization practices and security measures.
+sharing: "We will evaluate data-sharing practices with [partner 1], [partner 2], [partner 3],
+regulatory authorities and internal teams. This includes reviewing contractual safeguards,
+[industry]-specific data-processing requirements, cross-border data transfer practices
+(where applicable), anonymization procedures and security measures."
 
-retention [~30 words]:
-We will review retention policies for clinical trial documents, quality and batch records,
-manufacturing logs, pharmacovigilance data, HR and payroll files, medical reports, vendor
-documentation and operational logs.
+retention: "We will review retention policies for [record type 1], [record type 2],
+[record type 3], [record type 4], HR and payroll files, vendor documentation, [partner]
+agreements, operational logs and financial documentation. Retention requirements will be
+assessed against regulatory mandates, audit requirements and internal {company_short}
+governance policies."
 
-disposal [~47 words]:
-We will verify secure deletion, destruction and anonymization of records across digital
-platforms, validated systems, cloud repositories, archival databases and physical documentation.
-Disposal workflows will be reviewed for alignment with regulatory expectations, audit
-requirements and internal INTAS governance policies to ensure safe and compliant handling
-of obsolete data.
-
-NOW WRITE ALL 6 SECTIONS FOR {company_name} ({company_short}):
-- Replace every INTAS-specific term with the accurate equivalent from the TARGET COMPANY PROFILE
-- Follow the SAME sentence structure as each INTAS section above
-- Name ACTUAL functions, systems, data types and partner types from the profile
-- NEVER use Eveready terms: batteries, flashlights, distributors, plant-level, logistics
+disposal: "We will verify secure deletion, destruction and anonymization of records across
+[platform 1], [platform 2], archival repositories, [management system type] and physical
+documentation. Disposal workflows will be reviewed for alignment with regulatory expectations
+and internal {company_short} data-governance guidelines to ensure safe and compliant
+handling of obsolete data."
 """
+
 
 
 # ── Slides 12 & 14: Compact operational bullets ──────────────
@@ -1063,9 +1062,9 @@ if generate_btn:
              ))
         if ai.get("s11"):
             words = ai["s11"].split()
-            if len(words) > 82:
-                # Cut at last full stop within 82 words, never mid-sentence
-                candidate = " ".join(words[:82])
+            if len(words) > 85:
+                # Cut at last full stop within 85 words, never mid-sentence
+                candidate = " ".join(words[:85])
                 last_dot = candidate.rfind('.')
                 ai["s11"] = candidate[:last_dot + 1].strip() if last_dot > 0 else candidate + '.'
 
@@ -1073,12 +1072,13 @@ if generate_btn:
         # Word limits calibrated against INTAS reference (snap 2) — verified to fill boxes
         # without overflow. Character analysis shows boxes have ample capacity at these counts.
         S17_LIMITS = {
-            "collection":    55,   # INTAS ref = 55w ✓
-            "use_processing": 60,  # INTAS ref = 60w ✓
-            "storage":       47,   # INTAS ref = 47w ✓
-            "sharing":       34,   # INTAS ref = 38w, reduced 4w to prevent logo overlap
-            "retention":     30,   # INTAS ref = 28w, slight buffer
-            "disposal":      47,   # INTAS ref = 47w ✓
+            # Original box word capacity (from template) vs safe limit (for longer terms)
+            "collection":    55,   # box=61w original; 55w safe for multi-word tech terms
+            "use_processing": 58,  # box=64w original; 58w safe
+            "storage":       45,   # box=48w original; 45w safe
+            "sharing":       34,   # box=36w original; 34w safe (short wide box)
+            "retention":     38,   # box=43w original; 38w safe
+            "disposal":      45,   # box=47w original; 45w safe
         }
         try:
             raw17 = groq_call(client,
