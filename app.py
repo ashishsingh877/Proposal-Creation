@@ -359,27 +359,18 @@ Return ONLY the paragraph. EXACTLY 85 words. No labels, no quotes.
 """
 
 # ── Slide 17: Data Lifecycle ──────────────────────────────────
-# Each section has: P0 (bold title, never touch) + P1 (body, AI-generated)
-# Box dimensions: collection=360x127pt, use_processing=273x167pt, storage=279x127pt,
-#                 sharing=397x87pt, retention=355x101pt, disposal=301x127pt — all 11pt font
 P_S17 = """
-You are writing 6 Data Lifecycle paragraphs for a professional consulting proposal.
-Each paragraph fills a FIXED-SIZE text box on a slide — completeness and tone matter most.
+You are writing 6 Data Lifecycle paragraphs for a consulting proposal.
+Each paragraph fits inside a FIXED text box on a slide.
 
-TONE REFERENCE (copy this professional consulting tone — NOT the content):
-The original template uses this style:
-"We will review how [Company] collects personal, operational and regulatory data across
-functions such as [function 1]; [function 2]; [function 3]; and [function 4]. This includes
-data captured through [system 1], [system 2], [system 3] and [system 4] used across
-[Company's] [geography] network."
+HARD RULE: EVERY section must be EXACTLY 50-55 words. Count carefully.
+Write complete sentences only — never cut mid-sentence.
+If you write more than 55 words, you MUST shorten before returning.
 
-CRITICAL RULES:
-1. Write in EXACTLY that consulting tone — formal, specific, action-oriented ("We will...")
-2. Use ONLY information from the TARGET COMPANY PROFILE — not Eveready, not INTAS
-3. NEVER use: batteries, flashlights, plant-level, distributor management systems,
-   logistics systems, manufacturing units, EIIL — these are Eveready-specific
-4. Name ACTUAL functions, systems, data types and partner types from the profile
-5. Every paragraph must be a COMPLETE sentence — no truncation
+BANNED WORDS (never use these — they belong to a different company):
+batteries, flashlights, plant-level, distributor management systems,
+logistics systems, manufacturing units, EIIL, Eveready, lighting products,
+supply-chain coordination, distribution platforms
 
 TARGET COMPANY PROFILE:
 Name: {company_name}, Short: {company_short}
@@ -391,49 +382,53 @@ Data types: {data_types}
 Partner types: {partner_types}
 Geographic footprint: {geographic_footprint}
 
-Return JSON with keys: "collection","use_processing","storage","sharing","retention","disposal"
-Values = body paragraph text ONLY (no bold title, no section number).
+Return ONLY a JSON object with these 6 keys:
+"collection", "use_processing", "storage", "sharing", "retention", "disposal"
+Each value = body paragraph text only (no title, no number).
 ONLY valid JSON. No markdown fences.
 
-Target word counts (stay close — complete sentences always priority over word count):
-collection=58w, use_processing=58w, storage=58w, sharing=58w, retention=58w, disposal=58w
+SENTENCE TEMPLATES — fill in [brackets] from the company profile above.
+Each output must be 50-55 words exactly.
 
-WRITE EACH SECTION as follows (replace [placeholders] with actual company data):
+collection [50-55 words]:
+"We will review how {company_name} ({company_short}) collects personal, operational and
+regulatory data across functions such as [function 1]; [function 2]; [function 3];
+[function 4]; and [function 5]. This includes data captured through [system 1], [system 2],
+[system 3] and [system 4] used across {company_short}'s [geographic footprint]."
 
-collection: "We will review how {company_name} ({company_short}) collects personal,
-operational and regulatory data across functions such as [function 1]; [function 2];
-[function 3]; [function 4]; and [function 5]. This includes data captured through
-[system 1], [system 2], [system 3] and [system 4] used across {company_short}'s
-[geographic footprint]."
+use_processing [50-55 words]:
+"We will assess how collected data is used for [use-case 1], [use-case 2], [use-case 3]
+and [use-case 4] across {company_short}'s key segments: [service line 1], [service line 2]
+and [service line 3]. This includes data integration across [system 1], [system 2] and
+[system 3], along with tools supporting [function 1] and [function 2]."
 
-use_processing: "We will assess how collected data is used for [use-case 1], [use-case 2],
-[use-case 3], [use-case 4] and [use-case 5] across {company_short}'s key [service lines
-or segments]. This includes data integration across systems such as [system 1], [system 2]
-and [system 3], along with tools supporting [function 1], [function 2] and [function 3]."
+storage [50-55 words]:
+"We will examine secure storage of [data type 1], [data type 2] and [data type 3] across
+cloud platforms, on-premise servers at {company_short}'s offices, validated [system type],
+backup systems and [repository type]. Controls for authentication, role-based access, audit
+trails and compliance with applicable industry and corporate guidelines will also be reviewed."
 
-storage: "We will examine secure storage of [data type 1], [data type 2] and [data type 3]
-across cloud platforms, on-premise servers at {company_short}'s [locations], validated
-[system types], backup systems and [relevant repositories]. Controls for authentication,
-role-based access, audit trails and compliance with applicable industry and corporate
-guidelines will also be reviewed."
-
-sharing: "We will evaluate data-sharing practices with [partner 1], [partner 2], [partner 3],
+sharing [50-55 words]:
+"We will evaluate data-sharing practices with [partner 1], [partner 2], [partner 3],
 regulatory authorities and internal teams. This includes reviewing contractual safeguards,
 [industry]-specific data-processing requirements, cross-border data transfer practices
 (where applicable), anonymization procedures and security measures."
 
-retention: "We will review retention policies for [record type 1], [record type 2],
-[record type 3], [record type 4], HR and payroll files, vendor documentation, [partner]
-agreements, operational logs and financial documentation. Retention requirements will be
-assessed against regulatory mandates, audit requirements and internal {company_short}
-governance policies."
+retention [50-55 words]:
+"We will review retention policies for [record type 1], [record type 2], [record type 3],
+[record type 4], HR and payroll files, vendor documentation, [partner] agreements,
+operational logs and financial documentation. Retention requirements will be assessed
+against regulatory mandates, audit requirements and internal {company_short} governance
+policies."
 
-disposal: "We will verify secure deletion, destruction and anonymization of records across
-[platform 1], [platform 2], archival repositories, [management system type] and physical
-documentation. Disposal workflows will be reviewed for alignment with regulatory expectations
-and internal {company_short} data-governance guidelines to ensure safe and compliant
-handling of obsolete data."
+disposal [50-55 words]:
+"We will verify secure deletion, destruction and anonymization of records across [platform 1],
+[platform 2], archival repositories, [management system] and physical documentation.
+Disposal workflows will be reviewed for alignment with regulatory expectations and internal
+{company_short} data-governance guidelines to ensure safe and compliant handling of
+obsolete data."
 """
+
 
 
 
@@ -1072,13 +1067,12 @@ if generate_btn:
         # Word limits calibrated against INTAS reference (snap 2) — verified to fill boxes
         # without overflow. Character analysis shows boxes have ample capacity at these counts.
         S17_LIMITS = {
-            # Original box word capacity (from template) vs safe limit (for longer terms)
-            "collection":    55,   # box=61w original; 55w safe for multi-word tech terms
-            "use_processing": 58,  # box=64w original; 58w safe
-            "storage":       45,   # box=48w original; 45w safe
-            "sharing":       34,   # box=36w original; 34w safe (short wide box)
-            "retention":     38,   # box=43w original; 38w safe
-            "disposal":      45,   # box=47w original; 45w safe
+            "collection":    55,
+            "use_processing": 55,
+            "storage":       55,
+            "sharing":       55,
+            "retention":     55,
+            "disposal":      55,
         }
         try:
             raw17 = groq_call(client,
@@ -1096,25 +1090,34 @@ if generate_btn:
             raw17 = re.sub(r"^```(?:json)?", "", raw17).strip()
             raw17 = re.sub(r"```$", "", raw17).strip()
             ai["s17_lifecycle"] = json.loads(raw17)
-            # Use smart_trim (defined below) — cuts at last complete clause, never mid-sentence
-            # smart_trim is defined in the slides 12/14 block; apply same logic inline here
+            # Strict 55-word enforcement: trim to last complete sentence ≤55 words
             for k, limit in S17_LIMITS.items():
-                if k in ai["s17_lifecycle"]:
-                    text = ai["s17_lifecycle"][k]
-                    words = text.split()
-                    if len(words) <= limit:
-                        ai["s17_lifecycle"][k] = text if text.endswith('.') else text.rstrip(',') + '.'
+                if k not in ai["s17_lifecycle"]:
+                    continue
+                text = ai["s17_lifecycle"][k].strip()
+                words = text.split()
+                if len(words) <= limit:
+                    # Already within limit — ensure ends with period
+                    ai["s17_lifecycle"][k] = text if text.endswith('.') else text.rstrip(',') + '.'
+                else:
+                    # Build candidate at hard limit
+                    candidate = " ".join(words[:limit])
+                    # Priority 1: cut at last full stop within candidate
+                    last_dot = candidate.rfind('.')
+                    if last_dot > len(candidate) * 0.45:
+                        ai["s17_lifecycle"][k] = candidate[:last_dot + 1].strip()
                     else:
-                        candidate = " ".join(words[:limit])
-                        last_dot = candidate.rfind('.')
-                        if last_dot > len(candidate) * 0.5:
-                            ai["s17_lifecycle"][k] = candidate[:last_dot + 1].strip()
+                        # Priority 2: cut at last comma (end of clause)
+                        last_comma = candidate.rfind(',')
+                        if last_comma > len(candidate) * 0.4:
+                            ai["s17_lifecycle"][k] = candidate[:last_comma].strip() + '.'
                         else:
-                            last_comma = candidate.rfind(',')
-                            if last_comma > len(candidate) * 0.4:
-                                ai["s17_lifecycle"][k] = candidate[:last_comma].strip() + '.'
-                            else:
-                                ai["s17_lifecycle"][k] = candidate.rstrip(',') + '.'
+                            # Priority 3: hard cut with period
+                            ai["s17_lifecycle"][k] = candidate.rstrip(',').rstrip() + '.'
+                # Double-check: if still over limit after cut, hard trim to 55
+                final_words = ai["s17_lifecycle"][k].split()
+                if len(final_words) > limit:
+                    ai["s17_lifecycle"][k] = " ".join(final_words[:limit]).rstrip(',') + '.'
         except Exception as e:
             ai["s17_lifecycle"] = {}
             st.warning(f"s17_lifecycle: {e}")
