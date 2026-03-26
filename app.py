@@ -396,7 +396,7 @@ Values = body paragraph text ONLY (no bold title, no section number).
 ONLY valid JSON. No markdown fences.
 
 Target word counts (stay close — complete sentences always priority over word count):
-collection=55w, use_processing=58w, storage=45w, sharing=34w, retention=38w, disposal=45w
+collection=58w, use_processing=58w, storage=58w, sharing=58w, retention=58w, disposal=58w
 
 WRITE EACH SECTION as follows (replace [placeholders] with actual company data):
 
