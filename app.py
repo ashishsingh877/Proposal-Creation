@@ -360,23 +360,16 @@ Return ONLY the paragraph. EXACTLY 82 words. No labels, no quotes.
 
 # ── Slide 17: Data Lifecycle ──────────────────────────────────
 P_S17 = """
-You are rewriting 6 Data Lifecycle paragraphs for a professional consulting proposal.
-Each paragraph is in a FIXED-SIZE text box — EXACT word counts are mandatory.
+You are writing 6 Data Lifecycle paragraphs for a professional consulting proposal.
+Each paragraph goes into a FIXED-SIZE text box.
 
-APPROACH: Rewrite each ORIGINAL paragraph by replacing EIIL/Eveready-specific operational
-terms with accurate equivalents from the company profile. Keep EVERY other word IDENTICAL.
-Maintain the EXACT sentence structure, punctuation and flow of each original.
+CRITICAL RULE: Do NOT use any Eveready/EIIL content — no batteries, flashlights,
+manufacturing units, distributor management systems, plant-level systems or logistics
+terms unless the target company actually operates in those industries.
 
-WHAT TO REPLACE (use the profile below for accurate replacements):
-- "Eveready Industries India Ltd. (EIIL)" -> "{company_name} ({company_short})"
-- Functions/processes (e.g. "manufacturing processes for batteries, flashlights") ->
-  actual functions/service lines from profile
-- Systems (e.g. "plant-level manufacturing systems, distribution platforms, logistics systems") ->
-  actual systems from profile
-- Partner types (e.g. "distributor onboarding") -> actual partner types from profile
-- Data types (e.g. "manufacturing, safety") -> actual data categories from profile
-- Geography (e.g. "EIIL's nationwide network") -> actual footprint from profile
-- "EIIL's" -> "{company_short}'s" everywhere
+APPROACH: Use the INTAS REFERENCE EXAMPLE below as your structural template.
+Follow its sentence structure and flow. Replace INTAS-specific terms with accurate
+equivalents for the TARGET COMPANY from the profile provided.
 
 TARGET COMPANY PROFILE:
 Name: {company_name}, Short: {company_short}
@@ -391,76 +384,59 @@ Geographic footprint: {geographic_footprint}
 Return JSON keys: "collection","use_processing","storage","sharing","retention","disposal"
 Value = paragraph text ONLY (no title, no number). ONLY valid JSON. No markdown fences.
 
-IMPORTANT: The replacement terms for this company are LONGER than the original FMCG terms.
-Write content that is SPECIFIC and RICH — name actual functions, systems, data types and
-partner types from the profile. Aim for the word counts below which are calibrated to fill
-the fixed text boxes with the right density of information (not too sparse, not overflowing).
-
-Target word counts (write content that is close to these — do not go over):
+Target word counts (stay within these):
 collection=55w, use_processing=60w, storage=47w, sharing=34w, retention=30w, disposal=47w
 
-REFERENCE EXAMPLE (INTAS Pharmaceuticals — this quality and density is what we want):
+INTAS REFERENCE — follow this STRUCTURE, replace INTAS-specific terms with target company terms:
 
 collection [~55 words]:
-We will review how INTAS collects personal, operational, and regulatory data across functions
-such as employee onboarding, clinical trial enrollment, pharmacovigilance reporting,
-manufacturing processes, supplier onboarding, sales operations, and healthcare professional
-(HCP) interactions. This includes consent capture mechanisms, digital forms, laboratory
-systems (LIMS), HR systems, quality systems, and data gathered through ERP and MES platforms.
+We will review how INTAS collects personal, operational and regulatory data across functions
+such as employee onboarding; clinical trial enrollment; pharmacovigilance reporting;
+manufacturing processes; supplier onboarding; sales operations; and healthcare professional
+(HCP) interactions. This includes data captured through consent capture mechanisms, digital
+forms, laboratory systems (LIMS), HR systems, quality systems and data gathered through
+ERP and MES platforms.
 
 use_processing [~60 words]:
 We will assess how collected data is used for R&D activities, clinical trial management,
 batch production, quality control, supply chain coordination, compliance reporting, adverse
-event handling, HR operations, payroll processing, and overall business performance monitoring.
-This includes data integration across systems such as SAP, LIMS, QMS, CRM, and HRMS, along
-with tools supporting regulatory submissions, operational efficiency, and workforce management.
+event handling, HR operations, payroll processing and overall business performance monitoring
+across INTAS's key segments. This includes data integration across systems such as SAP, LIMS,
+QMS, CRM and HRMS, along with tools supporting regulatory submissions, operational efficiency
+and workforce management.
 
-storage [~55 words]:
-We will examine secure storage of R&D, clinical, manufacturing, patient safety, employee,
-and vendor data across cloud platforms, on-premise servers, laboratory instruments, backup
-systems, and validated pharmaceutical applications. Controls for encryption, authentication,
-audit trails, role-based access, and compliance with data integrity guidelines will also be reviewed.
+storage [~47 words]:
+We will examine secure storage of R&D, clinical, manufacturing, patient safety, employee and
+vendor data across cloud platforms, on-premise servers, laboratory instruments, backup systems
+and validated pharmaceutical applications. Controls for encryption, authentication, audit
+trails, role-based access and compliance with applicable data integrity guidelines will also
+be reviewed.
 
-sharing [~55 words]:
+sharing [~34 words]:
 We will evaluate data-sharing practices with research partners, CROs, regulatory authorities,
 manufacturing vendors, healthcare professionals and internal teams. This includes reviewing
 contractual safeguards, data-processing agreements, cross-border data transfer controls,
-anonymization practices, and security measures.
+anonymization practices and security measures.
 
-retention [~55 words]:
+retention [~30 words]:
 We will review retention policies for clinical trial documents, quality and batch records,
 manufacturing logs, pharmacovigilance data, HR and payroll files, medical reports, vendor
-documentation, and operational logs.
+documentation and operational logs.
 
-disposal [~55 words]:
-We will verify secure deletion, destruction, and anonymization of records across digital
-platforms, validated systems, cloud repositories, archival databases, and physical documentation.
+disposal [~47 words]:
+We will verify secure deletion, destruction and anonymization of records across digital
+platforms, validated systems, cloud repositories, archival databases and physical documentation.
 Disposal workflows will be reviewed for alignment with regulatory expectations, audit
-requirements, and internal governance policies to ensure safe and compliant handling of
-obsolete data.
+requirements and internal INTAS governance policies to ensure safe and compliant handling
+of obsolete data.
 
-NOW REWRITE EACH SECTION FOR THE TARGET COMPANY using the same structure and density:
-
-ORIGINALS — surgical replacement only, keep all other words IDENTICAL:
-
-collection [TARGET: 55 words — keep sentence complete]:
-We will review how Eveready Industries India Ltd. (EIIL) collects personal, operational and regulatory data across functions such as employee onboarding; manufacturing processes for batteries, flashlights and lighting products; distributor onboarding; sales operations; supply-chain coordination; and customer service requirements. This includes data captured through ERP systems, plant-level manufacturing systems, distribution platforms, logistics systems and digital interfaces used across EIIL's nationwide network.
-
-use_processing [TARGET: 55 words — keep sentence complete]:
-We will assess how collected data is used for manufacturing planning, quality control, inventory management, supply chain coordination, compliance reporting and performance monitoring across EIIL's key segments: batteries, flashlights, consumer lighting, professional lighting and electrical accessories. This includes data integration across systems such as ERP, CRM, distributor management systems and plant-level automation platforms, along with tools supporting R&D operations, workforce management and operational efficiency.
-
-storage [TARGET: 55 words — keep sentence complete]:
-We will examine secure storage of manufacturing, safety, employee and vendor data across cloud platforms, on-premise servers at EIIL's manufacturing units, validated production systems, backup systems and R&D repositories. Controls for authentication, role-based access, audit trails and compliance with applicable industry and corporate guidelines will also be reviewed.
-
-sharing [TARGET: 55 words — keep sentence complete]:
-We will evaluate data-sharing practices with distributors, logistics partners, manufacturing vendors, regulatory authorities, retailers and internal teams. This includes reviewing contractual safeguards, supply-chain data-processing requirements, cross-border data transfer practices (where applicable), anonymization procedures and security measures.
-
-retention [TARGET: 55 words — keep sentence complete]:
-We will review retention policies for manufacturing logs, quality-control reports, product testing data, R&D records, HR and payroll files, vendor documentation, distributor agreements, operational logs and financial documentation. Retention requirements will be assessed against regulatory mandates, audit requirements and internal EIIL governance policies.
-
-disposal [TARGET: 55 words — keep sentence complete]:
-We will verify secure deletion, destruction and anonymization of records across digital platforms, manufacturing systems, archival repositories, distributor management systems and physical documentation. Disposal workflows will be reviewed for alignment with regulatory expectations and internal EIIL data-governance guidelines to ensure safe and compliant handling of obsolete data.
+NOW WRITE ALL 6 SECTIONS FOR {company_name} ({company_short}):
+- Replace every INTAS-specific term with the accurate equivalent from the TARGET COMPANY PROFILE
+- Follow the SAME sentence structure as each INTAS section above
+- Name ACTUAL functions, systems, data types and partner types from the profile
+- NEVER use Eveready terms: batteries, flashlights, distributors, plant-level, logistics
 """
+
 
 # ── Slides 12 & 14: Compact operational bullets ──────────────
 # Slide 12: 9pt font, 264pt wide box — 32 words (matches original capacity)
