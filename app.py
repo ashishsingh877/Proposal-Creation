@@ -125,7 +125,7 @@ def groq_call(client: Groq, prompt: str, max_tokens: int = 1000) -> str:
 
 # ── Pre-step 1: Extract rich company profile ─────────────────
 P_COMPANY_PROFILE = """
-You are a business analyst. Read the company website content and extract a structured profile.
+You are a data privacy Senior Consultant. Read the company website content and extract a structured profile.
 Be SPECIFIC — use actual names from the website, not generic placeholders.
 
 Company: {company_name} ({company_short})
@@ -269,7 +269,7 @@ Key systems: {key_systems}
 Partner types: {partner_types}
 
 ORIGINALS (rewrite each — surgical replacement only, keep all privacy words):
-1. Conduct an enterprise-wide applicability assessment and privacy gap analysis, covering data discovery, lifecycle mapping, inventories, RoPA and documentation of internal/external data flows across EIIL's manufacturing, R&D, supply chain, procurement, commercial, HR, enterprise systems and distribution operations.
+1. Conduct an enterprise-wide privacy gap analysis, covering data discovery, lifecycle mapping, inventories, RoPA and documentation of internal/external data flows across EIIL's manufacturing, R&D, supply chain, procurement, commercial, HR, enterprise systems and distribution operations.
 2. Assess privacy, information security and regulatory risks across EIIL's manufacturing, quality, logistics, commercial, enterprise and SaaS platforms, including analytics environments, physical repositories and third-party networks such as distributors, retailers, logistics partners and service vendors.
 3. Evaluate governance structures, policies and controls covering lawful purpose, consent (where applicable), retention, erasure, grievance handling, DPR workflows, cross-border transfers and personal data breach processes.
 4. Design and operationalize a scalable privacy governance and risk framework, defining roles, accountability, escalation paths and procedures for DPIAs and risk-based reviews of new systems, digital initiatives and operational programs.
@@ -366,11 +366,6 @@ Each paragraph fits inside a FIXED text box on a slide.
 HARD RULE: EVERY section must be EXACTLY 50-55 words. Count carefully.
 Write complete sentences only — never cut mid-sentence.
 If you write more than 55 words, you MUST shorten before returning.
-
-BANNED WORDS (never use these — they belong to a different company):
-batteries, flashlights, plant-level, distributor management systems,
-logistics systems, manufacturing units, EIIL, Eveready, lighting products,
-supply-chain coordination, distribution platforms
 
 TARGET COMPANY PROFILE:
 Name: {company_name}, Short: {company_short}
