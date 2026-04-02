@@ -26,7 +26,7 @@ from pptx.enum.text import PP_ALIGN
 from groq import Groq
 from datetime import datetime
 
-current_month_year = datetime.now().strftime("%B%Y")
+current_month_year = datetime.now().strftime("%B %Y")
 # ─────────────────────────────────────────────────────────────
 # PAGE CONFIG
 # ─────────────────────────────────────────────────────────────
