@@ -24,7 +24,9 @@ from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
 from groq import Groq
+from datetime import datetime
 
+current_month_year = datetime.now().strftime("%B%Y")
 # ─────────────────────────────────────────────────────────────
 # PAGE CONFIG
 # ─────────────────────────────────────────────────────────────
@@ -1252,7 +1254,7 @@ if generate_btn:
 
     # ── Download ─────────────────────────────────────────────
     safe_name = re.sub(r"[^\w\s-]", "", company_name).strip().replace(" ", "_")[:40]
-    filename  = f"Proposal_Data_Privacy_{safe_name}_March2026.pptx"
+    filename  = f"Proposal_Data_Privacy_{safe_name}_{current_month_year}.pptx"
     st.download_button(
         label="⬇️ Download Personalised Proposal",
         data=output,
