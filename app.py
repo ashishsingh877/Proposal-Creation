@@ -26,7 +26,7 @@ from pptx.enum.text import PP_ALIGN
 from groq import Groq
 from datetime import datetime
 
-current_month_year = datetime.now().strftime("%B %Y")
+current_month_year = datetime.now().strftime("%B%Y")
 # ─────────────────────────────────────────────────────────────
 # PAGE CONFIG
 # ─────────────────────────────────────────────────────────────
@@ -706,26 +706,23 @@ def build_presentation(pptx_bytes: bytes, company_name: str,
     prs = Presentation(io.BytesIO(pptx_bytes))
 
     # ── Global name replacements on every slide ───────────────
-   gmap = {
-    "Eveready Industries India Ltd. (EIIL)": company_name,
-    "Eveready Industries India Ltd":         company_name.split("(")[0].strip().rstrip(","),
-    "Eveready Industries":                   company_name.split("(")[0].strip().rstrip(","),
-    "March 2026":                            current_month_year,
-
-    # Straight apostrophe variants
-    " EIIL'":   f" {company_short}'",
-    " EIIL's":  f" {company_short}'s",
-
-    # Curly-apostrophe variants
-    " EIIL\u2019s": f" {company_short}\u2019s",
-    " EIIL\u2019":  f" {company_short}\u2019s",
-    "EIIL\u2019s":  f"{company_short}\u2019s",
-    "EIIL\u2019 ":  f"{company_short}\u2019s ",
-    "EIIL\u2019":   f"{company_short}\u2019s",
-
-    "(EIIL)":        f"({company_short})",
-    "EIIL":          company_short,
-}
+    gmap = {
+        "Eveready Industries India Ltd. (EIIL)": company_name,
+        "Eveready Industries India Ltd":         company_name.split("(")[0].strip().rstrip(","),
+        "Eveready Industries":                   company_name.split("(")[0].strip().rstrip(","),
+        "March 2026":                            current_month_year,
+        # Straight apostrophe variants
+        " EIIL'":   f" {company_short}'",
+        " EIIL's":  f" {company_short}'s",
+        # Curly-apostrophe variants (U+2019) — used throughout the template
+        " EIIL\u2019s": f" {company_short}\u2019s",
+        " EIIL\u2019":  f" {company_short}\u2019s",   # template typo: missing 's' after apostrophe
+        "EIIL\u2019s":  f"{company_short}\u2019s",
+        "EIIL\u2019 ":  f"{company_short}\u2019s ",   # template typo in same run (no leading space)
+        "EIIL\u2019":   f"{company_short}\u2019s",    # bare curly apos without trailing space
+        "(EIIL)":        f"({company_short})",
+        "EIIL":          company_short,
+    }
     for slide in prs.slides:
         rep_slide(slide, gmap)
 
