@@ -801,9 +801,9 @@ def build_presentation(pptx_bytes: bytes, company_name: str,
                             for r in p.runs[1:]: r.text = ""
                 break
 
-    # ── Slide 11 (index 10) ──────────────────────────────────
-    if len(prs.slides) > 10:
-        set_para_text(prs.slides[10], "Rectangle 1",
+    # ── Slide 10 (index 9) ──────────────────────────────────
+    if len(prs.slides) > 9:
+        set_para_text(prs.slides[9], "Rectangle 1",
                       "For this engagement", ai["s11"])
 
     # ── Slide 17 (index 16) ──────────────────────────────────
