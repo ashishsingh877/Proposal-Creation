@@ -860,18 +860,18 @@ def build_presentation(pptx_bytes: bytes, company_name: str,
         if s12_b2:
             replace_in_slide(sl12, FRAG_B2, s12_b2)
 
-    # Slide 14 (index 13) — wide 661pt box, 28w limit
+    '''  Slide 14 (index 13) — wide 661pt box, 28w limit
     if len(prs.slides) > 13:
         sl14 = prs.slides[13]
         if s14_b1:
             if not replace_in_slide(sl14, FRAG_B1, s14_b1):
                 replace_in_slide(sl14, FRAG_B1b, s14_b1)
         if s14_b2:
-            replace_in_slide(sl14, FRAG_B2, s14_b2)
+            replace_in_slide(sl14, FRAG_B2, s14_b2)'''
 
-    # Slide 19 (index 18) — Privacy Notice sentence
+    '''  Slide 19 (index 18) — Privacy Notice sentence
     if len(prs.slides) > 18 and s19_notice:
-        replace_in_slide(prs.slides[18], FRAG_NOTICE, s19_notice)
+        replace_in_slide(prs.slides[18], FRAG_NOTICE, s19_notice)'''
 
     # ── Final pass: remove all apostrophe-space gaps in every slide ─
     clean_apostrophes(prs)
@@ -1170,7 +1170,7 @@ if generate_btn:
             ai["s12_b1"] = ai["s12_b2"] = ""
             st.warning(f"s12_bullets: {e}")
 
-        # Slide 14: wide box (661pt, 11pt font) — hard limit 28 words per sentence
+        ''' Slide 14: wide box (661pt, 11pt font) — hard limit 28 words per sentence
         try:
             raw_s14 = groq_call(client,
                                 P_S14_BULLETS.format(company_name=company_name,
@@ -1196,7 +1196,7 @@ if generate_btn:
                                  key_systems=key_systems,
                                  service_lines=svc_lines),
              max_tok=120,
-             fallback=f"Prepare tailored Privacy Notice and Consent Notice for {company_short}'s touchpoints covering operations, quality, HR, finance, IT, enterprise platforms and cloud/SaaS applications.")
+             fallback=f"Prepare tailored Privacy Notice and Consent Notice for {company_short}'s touchpoints covering operations, quality, HR, finance, IT, enterprise platforms and cloud/SaaS applications.")'''
 
         sts.update(label="✅ All AI content generated", state="complete")
 
