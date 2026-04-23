@@ -806,9 +806,9 @@ def build_presentation(pptx_bytes: bytes, company_name: str,
         set_para_text(prs.slides[9], "Rectangle 1",
                       "For this engagement", ai["s11"])
 
-    # ── Slide 17 (index 16) ──────────────────────────────────
-    if len(prs.slides) > 16:
-        s17 = prs.slides[16]
+    # ── Slide 16 (index 15) ──────────────────────────────────
+    if len(prs.slides) > 15:
+        s17 = prs.slides[15]
         lc  = ai.get("s17_lifecycle", {})
         for shp_name, key in [
             ("Rectangle 41", "collection"),
